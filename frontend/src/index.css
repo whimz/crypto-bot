@@ -26,6 +26,29 @@
   box-sizing: border-box;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-dim);
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -149,16 +172,71 @@ button.danger {
   font-weight: 600;
 }
 
-button.theme-toggle {
-  padding: 8px 12px;
-  font-size: 16px;
-  line-height: 1;
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  width: 36px;
+  height: 36px;
 }
 
-.username {
-  color: var(--text-dim);
+.icon-button.primary {
+  background: var(--green);
+  border-color: var(--green);
+  color: #0d1117;
+}
+
+.icon-button.danger {
+  background: var(--red);
+  border-color: var(--red);
+  color: #0d1117;
+}
+
+.account-menu {
+  position: relative;
+}
+
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 10;
+}
+
+.account-dropdown-username {
   font-size: 13px;
-  margin-left: 4px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 6px 8px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.account-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  font-size: 13px;
+  border-radius: 6px;
+  justify-content: flex-start;
+}
+
+.account-dropdown button:hover:not(:disabled) {
+  background: var(--bg);
+  opacity: 1;
 }
 
 /* Login page */
@@ -379,6 +457,7 @@ tbody tr:hover {
 
 .trades-filter {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -390,6 +469,71 @@ tbody tr:hover {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 10px;
+  min-width: 0;
+}
+
+.date-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+  min-width: 0;
+}
+
+.date-filter input {
+  font: inherit;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  min-width: 0;
+  width: 130px;
+}
+
+@media (max-width: 640px) {
+  .trades-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .trades-filter select,
+  .date-filter {
+    width: 100%;
+  }
+
+  .date-filter input {
+    flex: 1;
+    width: auto;
+  }
+}
+
+/* Activity log: capped height with its own scroll, so 100 rows never stretch the page */
+.activity-log-scroll {
+  max-height: 540px; /* ~15 rows */
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.activity-log-table {
+  width: 100%;
+}
+
+@media (max-width: 840px) {
+  .activity-log-table {
+    min-width: 700px;
+  }
+
+  .activity-log-table .log-reason {
+    min-width: 220px;
+  }
+}
+
+.activity-log-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
 }
 
 /* Toast */

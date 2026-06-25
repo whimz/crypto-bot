@@ -1,36 +1,84 @@
+import { useEffect, useRef, useState } from "react";
+import { Play, Square, UserCircle, Moon, Sun, LogOut } from "lucide-react";
+
+function LogoMark() {
+  return (
+    <svg
+      width="28"
+      height="28"
+      viewBox="0 0 28 28"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-label="Crypto Bot"
+      role="img"
+    >
+      <line x1="7" y1="4" x2="7" y2="11" />
+      <rect x="4" y="11" width="6" height="9" rx="1" />
+      <line x1="14" y1="2" x2="14" y2="9" />
+      <rect x="11" y="9" width="6" height="14" rx="1" />
+      <line x1="21" y1="6" x2="21" y2="13" />
+      <rect x="18" y="13" width="6" height="7" rx="1" />
+    </svg>
+  );
+}
+
 export default function Header({ status, busy, onStart, onStop, theme, onToggleTheme, username, onLogout }) {
   const isRunning = status === "running";
   const label = status ? status : "unknown";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
 
   return (
     <div className="header">
       <div className="header-title">
-        <h1>Crypto Bot</h1>
+        <LogoMark />
         <span className={`status-pill ${isRunning ? "running" : "stopped"}`}>
           <span className="status-dot" />
           {label}
         </span>
       </div>
       <div className="header-actions">
-        <button className="primary" onClick={onStart} disabled={busy || isRunning}>
-          Start Bot
+        <button className="icon-button primary" onClick={onStart} disabled={busy || isRunning} title="Start Bot" aria-label="Start Bot">
+          <Play size={18} />
         </button>
-        <button className="danger" onClick={onStop} disabled={busy || !isRunning}>
-          Stop Bot
-        </button>
-        <button
-          className="theme-toggle"
-          onClick={onToggleTheme}
-          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-          title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-        >
-          {theme === "dark" ? "🌙" : "☀️"}
+        <button className="icon-button danger" onClick={onStop} disabled={busy || !isRunning} title="Stop Bot" aria-label="Stop Bot">
+          <Square size={18} />
         </button>
         {username && (
-          <>
-            <span className="username">{username}</span>
-            <button onClick={onLogout}>Logout</button>
-          </>
+          <div className="account-menu" ref={menuRef}>
+            <button
+              className="icon-button"
+              onClick={() => setMenuOpen((open) => !open)}
+              title={username}
+              aria-label="Account menu"
+            >
+              <UserCircle size={20} />
+            </button>
+            {menuOpen && (
+              <div className="account-dropdown">
+                <div className="account-dropdown-username">{username}</div>
+                <button onClick={onToggleTheme}>
+                  {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+                  {theme === "dark" ? "Light theme" : "Dark theme"}
+                </button>
+                <button onClick={onLogout}>
+                  <LogOut size={16} />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

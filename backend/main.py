@@ -7,8 +7,13 @@ starts/stops scheduler.py's trading loop.
 from __future__ import annotations
 
 import logging
+import sys
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 if __name__ == "__main__":
     import uvicorn
