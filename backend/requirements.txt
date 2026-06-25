@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+requests
+python-dotenv
+apscheduler
+pytest
+python-jose[cryptography]
+passlib
