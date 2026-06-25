@@ -2,8 +2,8 @@ import math
 
 import pytest
 
-from backend.analysis.indicators import calculate_ema, calculate_macd, calculate_rsi, calculate_rsi_series
-from backend.tests.conftest import make_candles
+from analysis.indicators import calculate_ema, calculate_macd, calculate_rsi, calculate_rsi_series
+from tests.conftest import make_candles
 
 
 def test_calculate_ema_known_values():

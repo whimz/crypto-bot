@@ -5,12 +5,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Make sure `import backend....` works no matter what directory pytest is invoked from.
-ROOT_DIR = Path(__file__).resolve().parents[2]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+# Backend modules import each other root-relative (e.g. `from data.binance import Candle`),
+# matching Railway's deploy where root directory = backend/. Put backend/ itself on sys.path
+# no matter what directory pytest is invoked from.
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
-from backend.data.binance import Candle  # noqa: E402
+from data.binance import Candle  # noqa: E402
 
 
 def make_candles(prices: list[float]) -> list[Candle]:

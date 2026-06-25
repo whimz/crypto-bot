@@ -8,9 +8,9 @@ the fakes can key off of.
 
 from __future__ import annotations
 
-import backend.trading.signals as signals
-from backend.analysis.indicators import MACDResult
-from backend.tests.conftest import make_candles
+import trading.signals as signals
+from analysis.indicators import MACDResult
+from tests.conftest import make_candles
 
 CANDLES_15M = make_candles([100.0])  # len == 1
 CANDLES_1H = make_candles([100.0, 100.0])  # len == 2

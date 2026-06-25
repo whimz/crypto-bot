@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from backend.db import storage
-from backend.trading.risk import PositionState
+from db import storage
+from trading.risk import PositionState
 
 
 @pytest.fixture

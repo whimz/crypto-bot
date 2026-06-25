@@ -11,7 +11,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from backend.config import (
+from config import (
     AUTH_PASSWORD,
     AUTH_USERNAME,
     JWT_ALGORITHM,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from backend.trading.signals import SignalResult
+from trading.signals import SignalResult
 
 MAX_SYMBOL_ALLOCATION_PCT = 0.40
 MAX_CONSECUTIVE_DCA = 3

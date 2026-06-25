@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from backend.analysis.indicators import MACDResult, calculate_ema, calculate_macd, calculate_rsi
-from backend.data.binance import Candle
+from analysis.indicators import MACDResult, calculate_ema, calculate_macd, calculate_rsi
+from data.binance import Candle
 
 RSI_OVERSOLD = 35
 RSI_OVERBOUGHT = 65

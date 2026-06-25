@@ -5,11 +5,11 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from backend.data.binance import BinanceClient, BinanceClientError, Candle
-from backend.db import storage
-from backend.notifications import telegram
-from backend.trading.risk import PositionState, check_risk
-from backend.trading.signals import SignalResult
+from data.binance import BinanceClient, BinanceClientError, Candle
+from db import storage
+from notifications import telegram
+from trading.risk import PositionState, check_risk
+from trading.signals import SignalResult
 
 logger = logging.getLogger(__name__)
 

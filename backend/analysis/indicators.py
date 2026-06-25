@@ -1,10 +1,10 @@
-"""Technical indicators computed over Candle series from backend.data.binance."""
+"""Technical indicators computed over Candle series from data.binance."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from backend.data.binance import Candle
+from data.binance import Candle
 
 
 @dataclass(frozen=True)

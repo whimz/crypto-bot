@@ -9,7 +9,7 @@ from typing import Callable, Optional
 
 import requests
 
-from backend.config import TELEGRAM_CHAT_ID, TELEGRAM_TOKEN
+from config import TELEGRAM_CHAT_ID, TELEGRAM_TOKEN
 
 logger = logging.getLogger(__name__)
 

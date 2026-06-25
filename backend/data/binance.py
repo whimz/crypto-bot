@@ -11,7 +11,7 @@ from urllib.parse import urlencode
 
 import requests
 
-from backend.config import BINANCE_API_KEY, BINANCE_SECRET_KEY, BINANCE_TESTNET
+from config import BINANCE_API_KEY, BINANCE_SECRET_KEY, BINANCE_TESTNET
 
 PRODUCTION_BASE_URL = "https://api.binance.com"
 TESTNET_BASE_URL = "https://testnet.binance.vision"

@@ -10,11 +10,12 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend import auth, scheduler
-from backend.analysis.indicators import calculate_rsi_series
-from backend.config import SYMBOLS
-from backend.data.binance import BinanceClient, BinanceClientError
-from backend.db import storage
+import auth
+import scheduler
+from analysis.indicators import calculate_rsi_series
+from config import SYMBOLS
+from data.binance import BinanceClient, BinanceClientError
+from db import storage
 
 
 @asynccontextmanager

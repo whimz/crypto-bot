@@ -9,14 +9,14 @@ from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from backend.analysis.indicators import calculate_ema, calculate_macd, calculate_rsi
-from backend.config import SYMBOLS
-from backend.data.binance import BinanceClient, BinanceClientError, Candle
-from backend.db import storage
-from backend.notifications import telegram
-from backend.trading.executor import execute_signal, update_peak_prices
-from backend.trading.risk import PositionState
-from backend.trading.signals import SignalResult, get_signal
+from analysis.indicators import calculate_ema, calculate_macd, calculate_rsi
+from config import SYMBOLS
+from data.binance import BinanceClient, BinanceClientError, Candle
+from db import storage
+from notifications import telegram
+from trading.executor import execute_signal, update_peak_prices
+from trading.risk import PositionState
+from trading.signals import SignalResult, get_signal
 
 logger = logging.getLogger(__name__)
 

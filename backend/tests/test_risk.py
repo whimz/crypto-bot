@@ -1,13 +1,13 @@
 import pytest
 
-from backend.trading.risk import (
+from trading.risk import (
     GLOBAL_DRAWDOWN_STOP_PCT,
     MAX_CONSECUTIVE_DCA,
     MAX_SYMBOL_ALLOCATION_PCT,
     PositionState,
     check_risk,
 )
-from backend.trading.signals import SignalResult
+from trading.signals import SignalResult
 
 SYMBOL = "BTCUSDT"
 

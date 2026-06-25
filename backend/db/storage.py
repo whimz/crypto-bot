@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator, Optional
 
-from backend.config import DB_PATH
-from backend.trading.risk import PositionState
+from config import DB_PATH
+from trading.risk import PositionState
 
 _DB_PATH = Path(DB_PATH)
 
