@@ -1,4 +1,7 @@
-const BASE_URL = "/api";
+// In dev, BASE_URL stays "/api" so requests go through vite's proxy (vite.config.js),
+// which strips the "/api" prefix before forwarding to the backend. In production there's
+// no dev server/proxy, so BASE_URL must point directly at the deployed backend.
+const BASE_URL = import.meta.env.VITE_API_URL || "/api";
 const TOKEN_STORAGE_KEY = "auth_token";
 
 let unauthorizedHandler = () => {};
