@@ -29,6 +29,8 @@ SYMBOLS = [s.strip().upper() for s in os.getenv("SYMBOLS", "BTCUSDT,ETHUSDT,LTCU
 
 DB_PATH = os.getenv("DB_PATH", str(Path(__file__).resolve().parent / "data" / "crypto_bot.db"))
 
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
 AUTH_USERNAME = os.getenv("AUTH_USERNAME", "admin")
 AUTH_PASSWORD = os.getenv("AUTH_PASSWORD", "")
 

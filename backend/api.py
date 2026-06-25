@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import auth
 import scheduler
 from analysis.indicators import calculate_rsi_series
-from config import SYMBOLS
+from config import ALLOWED_ORIGINS, SYMBOLS
 from data.binance import BinanceClient, BinanceClientError
 from db import storage
 
@@ -34,6 +34,7 @@ app.include_router(auth.router)
 app.add_middleware(auth.AuthMiddleware)
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],
