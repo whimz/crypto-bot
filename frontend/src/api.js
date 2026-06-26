@@ -121,6 +121,53 @@ export function stopBot() {
   return request("/bot/stop", { method: "POST" });
 }
 
+export function getSettings() {
+  return request("/settings");
+}
+
+export function updateSettings(updates) {
+  return request("/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+}
+
+export function initPortfolio(amount) {
+  return request("/portfolio/init", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount }),
+  });
+}
+
+export function getPortfolioHistory(days = 7) {
+  return request(`/portfolio/history?days=${days}`);
+}
+
+export async function exportTradesCsv(symbol, dateFrom, dateTo) {
+  const params = new URLSearchParams();
+  if (symbol) params.set("symbol", symbol);
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
+
+  const token = getToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(`${BASE_URL}/trades/export?${params.toString()}`, { headers });
+  if (!response.ok) {
+    throw requestError(`Export failed: ${response.status} ${response.statusText}`, generateRequestId());
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "trades.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 const QUOTE_ASSETS = ["USDT", "BUSD", "USDC"];
 
 export function formatSymbol(symbol) {

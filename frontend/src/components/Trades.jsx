@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { formatSymbol, getTrades } from "../api.js";
+import { exportTradesCsv, formatSymbol, getTrades } from "../api.js";
 import { showToast } from "../toastBus.js";
 
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "LTCUSDT"];
@@ -16,7 +16,10 @@ function formatTimestamp(value) {
 
 export default function Trades() {
   const [symbol, setSymbol] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [trades, setTrades] = useState([]);
+  const [exporting, setExporting] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -38,9 +41,36 @@ export default function Trades() {
     return () => clearInterval(interval);
   }, [refresh]);
 
+  const filteredTrades = trades.filter((trade) => {
+    if (dateFrom && new Date(trade.timestamp).getTime() < new Date(`${dateFrom}T00:00:00`).getTime()) return false;
+    if (dateTo && new Date(trade.timestamp).getTime() > new Date(`${dateTo}T23:59:59.999`).getTime()) return false;
+    return true;
+  });
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportTradesCsv(symbol || undefined, dateFrom || undefined, dateTo || undefined);
+    } catch (err) {
+      showToast({
+        title: "Failed to export trades",
+        description: err.message,
+        requestId: err.requestId,
+        retry: handleExport,
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="card">
-      <h2>Trade History</h2>
+      <div className="card-header-row">
+        <h2>Trade History</h2>
+        <button onClick={handleExport} disabled={exporting}>
+          {exporting ? "Exporting..." : "Export CSV"}
+        </button>
+      </div>
       <div className="trades-filter">
         <select value={symbol} onChange={(e) => setSymbol(e.target.value)}>
           <option value="">All symbols</option>
@@ -50,8 +80,16 @@ export default function Trades() {
             </option>
           ))}
         </select>
+        <label className="date-filter">
+          From
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        </label>
+        <label className="date-filter">
+          To
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        </label>
       </div>
-      {trades.length === 0 ? (
+      {filteredTrades.length === 0 ? (
         <div className="empty-state">No trades yet</div>
       ) : (
         <table>
@@ -67,7 +105,7 @@ export default function Trades() {
             </tr>
           </thead>
           <tbody>
-            {trades.map((trade) => (
+            {filteredTrades.map((trade) => (
               <tr key={trade.id}>
                 <td>{formatTimestamp(trade.timestamp)}</td>
                 <td>{formatSymbol(trade.symbol)}</td>

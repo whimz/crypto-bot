@@ -24,7 +24,7 @@ function LogoMark() {
   );
 }
 
-export default function Header({ status, busy, onStart, onStop, theme, onToggleTheme, username, onLogout }) {
+export default function Header({ status, busy, onStart, onStop, theme, onToggleTheme, username, onLogout, inactive }) {
   const isRunning = status === "running";
   const label = status ? status : "unknown";
   const [menuOpen, setMenuOpen] = useState(false);
@@ -47,6 +47,11 @@ export default function Header({ status, busy, onStart, onStop, theme, onToggleT
           <span className="status-dot" />
           {label}
         </span>
+        {inactive && (
+          <span className="inactive-warning" title="Bot has not completed a cycle in over 20 minutes">
+            ⚠️ Inactive
+          </span>
+        )}
       </div>
       <div className="header-actions">
         <button className="icon-button primary" onClick={onStart} disabled={busy || isRunning} title="Start Bot" aria-label="Start Bot">

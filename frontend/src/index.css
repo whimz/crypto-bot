@@ -80,6 +80,63 @@ a {
   margin-bottom: 16px;
 }
 
+.card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.card-header-row h2 {
+  margin-bottom: 0;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.modal-field input {
+  font: inherit;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .card h2 {
   font-size: 14px;
   text-transform: uppercase;
@@ -136,6 +193,18 @@ a {
 .header-actions {
   display: flex;
   gap: 8px;
+}
+
+.inactive-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--orange);
+  background: rgba(230, 137, 47, 0.15);
 }
 
 button {
@@ -345,6 +414,14 @@ button.danger {
   color: var(--text);
 }
 
+.position-row span.positive {
+  color: var(--green);
+}
+
+.position-row span.negative {
+  color: var(--red);
+}
+
 .empty-state {
   color: var(--text-dim);
   font-size: 14px;
@@ -536,6 +613,124 @@ tbody tr:hover {
   background: var(--bg-card);
 }
 
+/* Settings */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-field label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.settings-field input {
+  font: inherit;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.settings-subheading {
+  margin-top: 20px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.settings-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-save {
+  margin-top: 20px;
+}
+
+/* Tooltip */
+.tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.tooltip-trigger {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tooltip-body {
+  position: absolute;
+  top: calc(100% + 8px);
+  width: 260px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 20;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+  color: var(--text);
+}
+
+.tooltip-body.tooltip-left {
+  left: 0;
+}
+
+.tooltip-body.tooltip-right {
+  right: 0;
+}
+
+.tooltip-what {
+  margin-bottom: 6px;
+}
+
+.tooltip-optimal {
+  color: var(--green);
+}
+
+.tooltip-risk {
+  color: var(--red);
+  margin-top: 4px;
+}
+
 /* Toast */
 .toast-container {
   position: fixed;
@@ -623,4 +818,63 @@ tbody tr:hover {
 .toast-dismiss {
   font-size: 12px;
   padding: 4px 10px;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  #root {
+    padding: 16px 12px 48px;
+  }
+
+  .header {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .header-title {
+    gap: 6px;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .status-pill,
+  .inactive-warning {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .header-actions {
+    gap: 4px;
+  }
+
+  .icon-button {
+    width: 32px;
+    height: 32px;
+    padding: 6px;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .position-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-main {
+    height: 220px;
+  }
+
+  .chart-rsi {
+    height: 90px;
+  }
+
+  .settings-grid,
+  .settings-toggle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 14px 14px;
+  }
 }

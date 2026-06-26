@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ActivityLog from "./components/ActivityLog.jsx";
 import Chart from "./components/Chart.jsx";
+import DepositChart from "./components/DepositChart.jsx";
 import Header from "./components/Header.jsx";
 import Login from "./components/Login.jsx";
 import Portfolio from "./components/Portfolio.jsx";
 import Positions from "./components/Positions.jsx";
+import Settings from "./components/Settings.jsx";
 import Toast from "./components/Toast.jsx";
 import Trades from "./components/Trades.jsx";
 import {
@@ -22,6 +24,7 @@ import { showToast } from "./toastBus.js";
 
 const POLL_INTERVAL_MS = 30_000;
 const THEME_STORAGE_KEY = "theme";
+const INACTIVITY_THRESHOLD_MS = 20 * 60 * 1000;
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -31,6 +34,9 @@ export default function App() {
   const [positions, setPositions] = useState([]);
   const [busy, setBusy] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_STORAGE_KEY) || "light");
+  // Tracks whether we've already toasted the current inactivity episode, so polling every
+  // 30s doesn't spam a new toast each time while the bot stays inactive.
+  const inactivityToastedRef = useRef(false);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -68,6 +74,18 @@ export default function App() {
       setHealth(healthData);
       setPortfolio(portfolioData);
       setPositions(positionsData);
+
+      const lastCycleAt = healthData?.last_cycle_at ? new Date(healthData.last_cycle_at).getTime() : null;
+      const isInactive = lastCycleAt !== null && Date.now() - lastCycleAt > INACTIVITY_THRESHOLD_MS;
+      if (isInactive && !inactivityToastedRef.current) {
+        inactivityToastedRef.current = true;
+        showToast({
+          title: "Bot inactive",
+          description: "The bot hasn't completed a trading cycle in over 20 minutes.",
+        });
+      } else if (!isInactive) {
+        inactivityToastedRef.current = false;
+      }
     } catch (err) {
       showToast({
         title: "Failed to load dashboard data",
@@ -133,6 +151,9 @@ export default function App() {
     }
   };
 
+  const lastCycleAt = health?.last_cycle_at ? new Date(health.last_cycle_at).getTime() : null;
+  const isInactive = lastCycleAt !== null && Date.now() - lastCycleAt > INACTIVITY_THRESHOLD_MS;
+
   if (!authChecked) {
     return null;
   }
@@ -157,12 +178,15 @@ export default function App() {
         onToggleTheme={toggleTheme}
         username={username}
         onLogout={handleLogout}
+        inactive={isInactive}
       />
-      <Portfolio portfolio={portfolio} />
+      <Portfolio portfolio={portfolio} onDepositSaved={refresh} />
       <Positions positions={positions} />
       <Chart />
+      <DepositChart />
       <Trades />
       <ActivityLog />
+      <Settings />
       <Toast />
     </>
   );

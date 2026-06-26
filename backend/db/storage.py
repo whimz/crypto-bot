@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Callable, Iterator, Optional
 
 from config import DB_PATH
 from trading.risk import PositionState
+
+logger = logging.getLogger(__name__)
 
 _DB_PATH = Path(DB_PATH)
 
@@ -52,65 +55,122 @@ def _connect() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+def migrate_v1(conn: sqlite3.Connection) -> None:
+    """Original schema: trades, bot_logs, positions, the singleton portfolio row."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS trades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            action TEXT NOT NULL,
+            price REAL NOT NULL,
+            amount_usdt REAL NOT NULL,
+            timestamp TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            confidence REAL NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS bot_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            action TEXT NOT NULL,
+            confidence REAL NOT NULL,
+            reason TEXT NOT NULL,
+            details TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS positions (
+            symbol TEXT PRIMARY KEY,
+            avg_price REAL NOT NULL,
+            total_invested REAL NOT NULL,
+            dca_count INTEGER NOT NULL,
+            peak_price REAL NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS portfolio (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            initial_deposit_usdt REAL NOT NULL,
+            current_deposit_usdt REAL NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    # Seed the singleton portfolio row so get_portfolio() never has to handle "missing".
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO portfolio (id, initial_deposit_usdt, current_deposit_usdt, updated_at)
+        VALUES (1, 0, 0, ?)
+        """,
+        (datetime.now(timezone.utc).isoformat(),),
+    )
+
+
+def migrate_v2(conn: sqlite3.Connection) -> None:
+    """Runtime-configurable strategy settings (incl. notify_trades and co.) and deposit history."""
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS portfolio_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            deposit_usdt REAL NOT NULL,
+            timestamp TEXT NOT NULL
+        )
+        """
+    )
+
+
+# Ordered (version, migration) pairs. Add new migrations by appending here - never edit or
+# reorder an already-shipped entry, or Railway's existing DB will skip/redo it incorrectly.
+MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
+    (1, migrate_v1),
+    (2, migrate_v2),
+]
+
+
+def _current_schema_version(conn: sqlite3.Connection) -> int:
+    row = conn.execute("SELECT MAX(version) AS version FROM schema_version").fetchone()
+    return row["version"] or 0
+
+
 def init_db() -> None:
     _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _connect() as conn:
         conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS trades (
+            CREATE TABLE IF NOT EXISTS schema_version (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                symbol TEXT NOT NULL,
-                action TEXT NOT NULL,
-                price REAL NOT NULL,
-                amount_usdt REAL NOT NULL,
-                timestamp TEXT NOT NULL,
-                reason TEXT NOT NULL,
-                confidence REAL NOT NULL
+                version INTEGER NOT NULL,
+                applied_at TEXT NOT NULL
             )
             """
         )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS bot_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT NOT NULL,
-                symbol TEXT NOT NULL,
-                action TEXT NOT NULL,
-                confidence REAL NOT NULL,
-                reason TEXT NOT NULL,
-                details TEXT NOT NULL DEFAULT ''
+        current_version = _current_schema_version(conn)
+        for version, migration in MIGRATIONS:
+            if version <= current_version:
+                continue
+            migration(conn)
+            conn.execute(
+                "INSERT INTO schema_version (version, applied_at) VALUES (?, ?)",
+                (version, datetime.now(timezone.utc).isoformat()),
             )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS positions (
-                symbol TEXT PRIMARY KEY,
-                avg_price REAL NOT NULL,
-                total_invested REAL NOT NULL,
-                dca_count INTEGER NOT NULL,
-                peak_price REAL NOT NULL
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS portfolio (
-                id INTEGER PRIMARY KEY CHECK (id = 1),
-                initial_deposit_usdt REAL NOT NULL,
-                current_deposit_usdt REAL NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-        # Seed the singleton portfolio row so get_portfolio() never has to handle "missing".
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO portfolio (id, initial_deposit_usdt, current_deposit_usdt, updated_at)
-            VALUES (1, 0, 0, ?)
-            """,
-            (datetime.now(timezone.utc).isoformat(),),
-        )
+            logger.info("Applied database migration v%d", version)
 
 
 def save_trade(trade: Trade) -> int:
@@ -218,6 +278,60 @@ def update_portfolio(current_deposit: float) -> None:
             """,
             (current_deposit, current_deposit, now),
         )
+
+
+def get_settings() -> dict[str, str]:
+    with _connect() as conn:
+        rows = conn.execute("SELECT key, value FROM settings").fetchall()
+    return {row["key"]: row["value"] for row in rows}
+
+
+def save_settings(updates: dict[str, str]) -> None:
+    with _connect() as conn:
+        conn.executemany(
+            """
+            INSERT INTO settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            list(updates.items()),
+        )
+
+
+def save_portfolio_snapshot(deposit_usdt: float) -> None:
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO portfolio_history (deposit_usdt, timestamp) VALUES (?, ?)",
+            (deposit_usdt, datetime.now(timezone.utc).isoformat()),
+        )
+
+
+def get_portfolio_history(since: str) -> list[dict]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT deposit_usdt, timestamp FROM portfolio_history WHERE timestamp >= ? ORDER BY id ASC",
+            (since,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def get_trades_filtered(
+    symbol: Optional[str] = None, date_from: Optional[str] = None, date_to: Optional[str] = None
+) -> list[dict]:
+    query = "SELECT id, symbol, action, price, amount_usdt, timestamp, reason, confidence FROM trades WHERE 1=1"
+    params: list = []
+    if symbol:
+        query += " AND symbol = ?"
+        params.append(symbol)
+    if date_from:
+        query += " AND timestamp >= ?"
+        params.append(date_from)
+    if date_to:
+        query += " AND timestamp <= ?"
+        params.append(date_to)
+    query += " ORDER BY id ASC"
+    with _connect() as conn:
+        rows = conn.execute(query, params).fetchall()
+    return [dict(row) for row in rows]
 
 
 init_db()

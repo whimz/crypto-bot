@@ -22,9 +22,13 @@ logger = logging.getLogger(__name__)
 
 CYCLE_MINUTES = 15
 CONFIDENCE_THRESHOLD = 70
+INACTIVITY_THRESHOLD_MINUTES = 20
+INACTIVITY_ALERT_COOLDOWN_MINUTES = 60
 
 _scheduler: Optional[BackgroundScheduler] = None
 _running = False
+_last_cycle_at: Optional[datetime] = None
+_last_inactivity_alert_at: Optional[datetime] = None
 
 
 def _build_log_details(candles_15m: list[Candle], candles_1h: list[Candle]) -> str:
@@ -81,7 +85,41 @@ def _log_error(symbol: str, reason: str) -> None:
         logger.exception("[%s] Failed to write error log entry", symbol)
 
 
+def get_last_cycle_at() -> Optional[str]:
+    return _last_cycle_at.isoformat() if _last_cycle_at else None
+
+
+def set_cycle_minutes(minutes: int) -> None:
+    """Update the cycle interval and, if the bot is already running, reschedule the live job."""
+    global CYCLE_MINUTES
+    CYCLE_MINUTES = minutes
+    if _scheduler is not None:
+        _scheduler.reschedule_job("run_cycle", trigger="interval", minutes=minutes)
+
+
+def _check_inactivity() -> None:
+    global _last_inactivity_alert_at
+
+    if _last_cycle_at is None:
+        return
+    inactive_minutes = (datetime.now(timezone.utc) - _last_cycle_at).total_seconds() / 60
+    if inactive_minutes <= INACTIVITY_THRESHOLD_MINUTES:
+        return
+
+    now = datetime.now(timezone.utc)
+    if _last_inactivity_alert_at is not None:
+        since_last_alert = (now - _last_inactivity_alert_at).total_seconds() / 60
+        if since_last_alert < INACTIVITY_ALERT_COOLDOWN_MINUTES:
+            return
+
+    _last_inactivity_alert_at = now
+    logger.warning("Bot inactive for %.0f minutes", inactive_minutes)
+    telegram.notify_inactive(inactive_minutes)
+
+
 def run_cycle() -> None:
+    global _last_cycle_at
+
     if not _running:
         return
 
@@ -110,6 +148,12 @@ def run_cycle() -> None:
             logger.exception("[%s] Unexpected error in trading cycle", symbol)
             telegram.notify_error(f"[{symbol}] Unexpected error in trading cycle, see logs")
             _log_error(symbol, f"Unexpected error in trading cycle: {exc}")
+
+    _last_cycle_at = datetime.now(timezone.utc)
+    try:
+        storage.save_portfolio_snapshot(storage.get_portfolio()["current_deposit_usdt"])
+    except Exception:
+        logger.exception("Failed to save portfolio history snapshot")
 
     logger.info("Cycle complete for %s", ", ".join(SYMBOLS))
 
@@ -160,7 +204,8 @@ def start_bot() -> None:
 
     if _scheduler is None:
         _scheduler = BackgroundScheduler()
-        _scheduler.add_job(run_cycle, "interval", minutes=CYCLE_MINUTES, next_run_time=datetime.now())
+        _scheduler.add_job(run_cycle, "interval", minutes=CYCLE_MINUTES, next_run_time=datetime.now(), id="run_cycle")
+        _scheduler.add_job(_check_inactivity, "interval", minutes=5, id="check_inactivity")
         _scheduler.start()
     else:
         _scheduler.resume()

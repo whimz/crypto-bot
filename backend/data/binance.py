@@ -18,6 +18,7 @@ TESTNET_BASE_URL = "https://testnet.binance.vision"
 
 KLINES_ENDPOINT = "/api/v3/klines"
 ORDER_ENDPOINT = "/api/v3/order"
+TICKER_PRICE_ENDPOINT = "/api/v3/ticker/price"
 
 VALID_INTERVALS = {
     "1m", "3m", "5m", "15m", "30m",
@@ -100,6 +101,16 @@ class BinanceClient:
 
         raw_klines = response.json()
         return [self._parse_kline(k) for k in raw_klines]
+
+    def get_ticker_price(self, symbol: str) -> float:
+        """Latest traded price for a symbol, e.g. for PnL calculations."""
+        url = f"{self.base_url}{TICKER_PRICE_ENDPOINT}"
+        try:
+            response = self.session.get(url, params={"symbol": symbol.upper()}, timeout=10)
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            raise BinanceClientError(f"Failed to fetch ticker price for {symbol}: {exc}") from exc
+        return float(response.json()["price"])
 
     def place_market_order(self, symbol: str, side: str, quote_order_qty: float) -> dict:
         """Place a MARKET order sized in quote currency (USDT) for both BUY and SELL.

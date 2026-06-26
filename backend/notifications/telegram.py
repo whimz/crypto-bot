@@ -10,6 +10,7 @@ from typing import Callable, Optional
 import requests
 
 from config import TELEGRAM_CHAT_ID, TELEGRAM_TOKEN
+from settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,8 @@ def send_message(text: str) -> bool:
 
 
 def notify_trade(action: str, symbol: str, price: float, amount_usdt: float, reason: str, confidence: float) -> None:
+    if not get_settings().notify_trades:
+        return
     emoji = {"BUY": "\U0001F7E2", "SELL": "\U0001F534"}.get(action.upper(), "⚪")
     text = (
         f"{emoji} <b>{action.upper()}</b> {symbol}\n"
@@ -61,11 +64,21 @@ def notify_trade(action: str, symbol: str, price: float, amount_usdt: float, rea
 
 
 def notify_error(error_text: str) -> None:
+    if not get_settings().notify_errors:
+        return
     send_message(f"⚠️ <b>ERROR</b>\n{error_text}")
 
 
 def notify_stop(reason: str) -> None:
+    if not get_settings().notify_stops:
+        return
     send_message(f"\U0001F6D1 <b>BOT STOPPED</b>\n{reason}")
+
+
+def notify_inactive(inactive_minutes: float) -> None:
+    if not get_settings().notify_inactive:
+        return
+    send_message(f"⚠️ Бот не активен более {int(inactive_minutes)} минут")
 
 
 def register_command_handler(command: str, handler: CommandHandler) -> None:
