@@ -5,6 +5,7 @@
 Этап: активная разработка на Testnet.
 
 ## Правила работы
+- Задание подробно анализируется до старта
 - Все уточняющие вопросы — только в начале задачи
 - После старта — действуй автономно без лишних вопросов
 - Перед реализацией — анализ существующего кода
@@ -58,3 +59,69 @@
 - requestId + кнопка копирования
 Никаких alert() или console.error() в UI.
 Все ошибки сети, 4xx, 5xx — только через Toast.
+
+## Статус проекта
+Обновлять эту секцию после каждого завершённого спринта.
+
+### Что реализовано
+Backend:
+- binance.py — клиент Binance API + Testnet
+- indicators.py — RSI(14), EMA(50), MACD(12,26,9)
+- signals.py — логика BUY/SELL/HOLD (2 таймфрейма)
+- risk.py — трейлинг стоп 7%, DCA, аллокация
+- executor.py — исполнение ордеров
+- storage.py — SQLite + миграции
+- scheduler.py — цикл каждые 15 минут
+- api.py — REST API + JWT авторизация
+- auth.py — логин/токены
+- settings.py — настройки в runtime
+- telegram.py — уведомления + команды
+
+Frontend:
+- Login.jsx — авторизация
+- Header.jsx — статус, Start/Stop, аккаунт
+- Portfolio.jsx — депозит, просадка, Set Deposit
+- Positions.jsx — позиции + PnL
+- Chart.jsx — свечной график + RSI
+- DepositChart.jsx — график депозита во времени
+- ActivityLog.jsx — лог решений бота + фильтры
+- Trades.jsx — история сделок + экспорт CSV
+- Settings.jsx — настройки стратегии + Tooltip
+- Toast.jsx — UI уведомления об ошибках
+
+Инфраструктура:
+- Railway Volume — персистентная БД
+- GitHub Actions — автодеплой
+- CLAUDE.md — правила для Claude Code
+- 42 теста — покрытие критической логики
+
+### Деплой
+Backend:  https://crypto-bot-production-3c5c.up.railway.app
+Frontend: https://crypto-bot-ebg.pages.dev
+БД:       Railway Volume /app/backend/data
+
+### TODO
+TODO — это не команды для работы, а идеи на будущее, реализуются по мере возможности.
+
+
+UI/UX:
+- Пагинация в Activity Log (сейчас лимит 100)
+
+Функционал:
+- Sync Balance с Binance (реальный баланс USDT)
+- Пресеты стратегий:
+  - Conservative (RSI 30/70, confidence 75)
+  - Moderate (RSI 35/65, confidence 70) ← текущая
+  - Aggressive (RSI 40/60, confidence 60)
+- Адаптивная стратегия — Claude анализирует рынок и выбирает оптимальный пресет автоматически
+- WebSocket мониторинг стоп-лосса в реальном времени
+- Bollinger Bands как альтернативный индикатор
+
+Инфраструктура:
+- Бэкап БД (сейчас только Volume на Railway)
+
+Будущее:
+- Фьючерсы (SHORT стратегия, плечо ×2), учитывать фандинг рейт при решениях
+- Мультипользовательская система
+- Поддержка большего количества монет
+- Backtesting на исторических данных

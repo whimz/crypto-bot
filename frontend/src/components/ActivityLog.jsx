@@ -5,6 +5,8 @@ import { showToast } from "../toastBus.js";
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "LTCUSDT"];
 const ACTIONS = ["All", "BUY", "SELL", "HOLD", "ERROR"];
 const POLL_INTERVAL_MS = 30_000;
+const PAGE_SIZE = 25;
+const SCROLL_LOAD_THRESHOLD_PX = 48;
 
 function formatTimestamp(value) {
   const date = new Date(value);
@@ -17,14 +19,18 @@ export default function ActivityLog() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [logs, setLogs] = useState([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   // null until the first successful load, so we toast only errors that appear *after*
   // we've started watching - not the whole backlog already in bot_logs.
   const seenErrorIdsRef = useRef(null);
+  const scrollRef = useRef(null);
 
   const refresh = useCallback(async () => {
     try {
-      const data = await getLogs(symbol || undefined, 100);
+      const data = await getLogs(symbol || undefined, PAGE_SIZE, 0);
       setLogs(data);
+      setHasMore(data.length === PAGE_SIZE);
 
       const errorEntries = data.filter((entry) => entry.action === "ERROR");
       if (seenErrorIdsRef.current === null) {
@@ -50,11 +56,38 @@ export default function ActivityLog() {
     }
   }, [symbol]);
 
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await getLogs(symbol || undefined, PAGE_SIZE, logs.length);
+      setLogs((current) => [...current, ...data]);
+      setHasMore(data.length === PAGE_SIZE);
+    } catch (err) {
+      showToast({
+        title: "Failed to load more activity",
+        description: err.message,
+        requestId: err.requestId,
+        retry: loadMore,
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [symbol, logs.length, loadingMore, hasMore]);
+
   useEffect(() => {
     refresh();
     const interval = setInterval(refresh, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [refresh]);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_LOAD_THRESHOLD_PX) {
+      loadMore();
+    }
+  };
 
   const filteredLogs = useMemo(() => {
     // Parse as local time (date-only strings parse as UTC in JS), to match the user's
@@ -101,7 +134,7 @@ export default function ActivityLog() {
       {filteredLogs.length === 0 ? (
         <div className="empty-state">No activity yet</div>
       ) : (
-        <div className="activity-log-scroll">
+        <div className="activity-log-scroll" ref={scrollRef} onScroll={handleScroll}>
           <table className="activity-log-table">
             <thead>
               <tr>
@@ -126,6 +159,7 @@ export default function ActivityLog() {
               ))}
             </tbody>
           </table>
+          {loadingMore && <div className="empty-state">Loading...</div>}
         </div>
       )}
     </div>

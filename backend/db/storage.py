@@ -197,14 +197,14 @@ def save_log(entry: LogEntry) -> int:
         return cursor.lastrowid
 
 
-def get_logs(symbol: Optional[str] = None, limit: int = 100) -> list[dict]:
+def get_logs(symbol: Optional[str] = None, limit: int = 100, offset: int = 0) -> list[dict]:
     query = "SELECT id, timestamp, symbol, action, confidence, reason, details FROM bot_logs"
     params: tuple = ()
     if symbol:
         query += " WHERE symbol = ?"
         params = (symbol,)
-    query += " ORDER BY id DESC LIMIT ?"
-    params = params + (limit,)
+    query += " ORDER BY id DESC LIMIT ? OFFSET ?"
+    params = params + (limit, offset)
     with _connect() as conn:
         rows = conn.execute(query, params).fetchall()
     return [dict(row) for row in rows]

@@ -158,8 +158,12 @@ def update_settings_endpoint(updates: dict) -> dict:
 
 
 @app.get("/logs")
-def logs(symbol: Optional[str] = Query(None), limit: int = Query(100, ge=1, le=1000)) -> list[dict]:
-    entries = storage.get_logs(symbol=symbol, limit=limit)
+def logs(
+    symbol: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+) -> list[dict]:
+    entries = storage.get_logs(symbol=symbol, limit=limit, offset=offset)
     for entry in entries:
         entry["details"] = json.loads(entry["details"]) if entry["details"] else None
     return entries

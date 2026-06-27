@@ -102,8 +102,8 @@ export function getTrades(symbol, limit = 50) {
   return request(`/trades?${params.toString()}`);
 }
 
-export function getLogs(symbol, limit = 100) {
-  const params = new URLSearchParams({ limit: String(limit) });
+export function getLogs(symbol, limit = 100, offset = 0) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (symbol) params.set("symbol", symbol);
   return request(`/logs?${params.toString()}`);
 }

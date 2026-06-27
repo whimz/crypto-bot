@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Square, UserCircle, Moon, Sun, LogOut } from "lucide-react";
+import { Play, Square, UserCircle, Moon, Sun, LogOut, Settings as SettingsIcon } from "lucide-react";
 
 function LogoMark() {
   return (
@@ -24,7 +24,18 @@ function LogoMark() {
   );
 }
 
-export default function Header({ status, busy, onStart, onStop, theme, onToggleTheme, username, onLogout, inactive }) {
+export default function Header({
+  status,
+  busy,
+  onStart,
+  onStop,
+  theme,
+  onToggleTheme,
+  username,
+  onLogout,
+  inactive,
+  onOpenSettings,
+}) {
   const isRunning = status === "running";
   const label = status ? status : "unknown";
   const [menuOpen, setMenuOpen] = useState(false);
@@ -76,6 +87,15 @@ export default function Header({ status, busy, onStart, onStop, theme, onToggleT
                 <button onClick={onToggleTheme}>
                   {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
                   {theme === "dark" ? "Light theme" : "Dark theme"}
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onOpenSettings();
+                  }}
+                >
+                  <SettingsIcon size={16} />
+                  Trade settings
                 </button>
                 <button onClick={onLogout}>
                   <LogOut size={16} />

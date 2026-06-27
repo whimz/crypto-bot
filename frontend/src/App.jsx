@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ActivityLog from "./components/ActivityLog.jsx";
 import Chart from "./components/Chart.jsx";
 import DepositChart from "./components/DepositChart.jsx";
+import FadeInSection from "./components/FadeInSection.jsx";
 import Header from "./components/Header.jsx";
 import Login from "./components/Login.jsx";
 import Portfolio from "./components/Portfolio.jsx";
 import Positions from "./components/Positions.jsx";
-import Settings from "./components/Settings.jsx";
+import SettingsDrawer from "./components/SettingsDrawer.jsx";
 import Toast from "./components/Toast.jsx";
 import Trades from "./components/Trades.jsx";
 import {
@@ -34,6 +35,7 @@ export default function App() {
   const [positions, setPositions] = useState([]);
   const [busy, setBusy] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_STORAGE_KEY) || "light");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // Tracks whether we've already toasted the current inactivity episode, so polling every
   // 30s doesn't spam a new toast each time while the bot stays inactive.
   const inactivityToastedRef = useRef(false);
@@ -179,14 +181,29 @@ export default function App() {
         username={username}
         onLogout={handleLogout}
         inactive={isInactive}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
-      <Portfolio portfolio={portfolio} onDepositSaved={refresh} />
-      <Positions positions={positions} />
-      <Chart />
-      <DepositChart />
-      <Trades />
-      <ActivityLog />
-      <Settings />
+      <div className="grid md:grid-cols-2 gap-4">
+        <FadeInSection>
+          <Portfolio portfolio={portfolio} onDepositSaved={refresh} />
+        </FadeInSection>
+        <FadeInSection>
+          <Positions positions={positions} />
+        </FadeInSection>
+        <FadeInSection>
+          <Chart />
+        </FadeInSection>
+        <FadeInSection>
+          <DepositChart />
+        </FadeInSection>
+        <FadeInSection>
+          <Trades />
+        </FadeInSection>
+        <FadeInSection>
+          <ActivityLog />
+        </FadeInSection>
+      </div>
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <Toast />
     </>
   );
