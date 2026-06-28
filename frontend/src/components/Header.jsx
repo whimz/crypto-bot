@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Square, UserCircle, Moon, Sun, LogOut, Settings as SettingsIcon } from "lucide-react";
+import { Play, Square, RefreshCw, UserCircle, Moon, Sun, LogOut, Settings as SettingsIcon } from "lucide-react";
 
 function LogoMark() {
   return (
@@ -29,6 +29,7 @@ export default function Header({
   busy,
   onStart,
   onStop,
+  onRunCycle,
   theme,
   onToggleTheme,
   username,
@@ -71,6 +72,17 @@ export default function Header({
         <button className="icon-button danger" onClick={onStop} disabled={busy || !isRunning} title="Stop Bot" aria-label="Stop Bot">
           <Square size={18} />
         </button>
+        {isRunning && (
+          <button
+            className="icon-button"
+            onClick={onRunCycle}
+            disabled={busy}
+            title="Run cycle now"
+            aria-label="Run cycle now"
+          >
+            <RefreshCw size={18} />
+          </button>
+        )}
         {username && (
           <div className="account-menu" ref={menuRef}>
             <button

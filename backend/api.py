@@ -211,3 +211,12 @@ def bot_start() -> dict:
 def bot_stop() -> dict:
     scheduler.stop_bot(reason="Stopped via API")
     return {"status": "running" if scheduler._running else "stopped"}
+
+
+@app.post("/bot/run-cycle")
+def bot_run_cycle() -> dict:
+    """One-off manual trading cycle, independent of the 15-minute APScheduler job."""
+    if not scheduler._running:
+        raise HTTPException(status_code=409, detail="Bot is not running")
+    scheduler.run_cycle()
+    return {"status": "ok", "last_cycle_at": scheduler.get_last_cycle_at()}

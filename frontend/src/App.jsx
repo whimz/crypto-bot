@@ -17,6 +17,7 @@ import {
   getPositions,
   getToken,
   logout,
+  runCycleNow,
   setUnauthorizedHandler,
   startBot,
   stopBot,
@@ -139,6 +140,24 @@ export default function App() {
     }
   };
 
+  const handleRunCycle = async () => {
+    setBusy(true);
+    try {
+      await runCycleNow();
+      await refresh();
+      showToast({ title: "Cycle triggered", description: "Manual trading cycle completed." });
+    } catch (err) {
+      showToast({
+        title: "Failed to run cycle",
+        description: err.message,
+        requestId: err.requestId,
+        retry: handleRunCycle,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     setUsername(null);
@@ -176,6 +195,7 @@ export default function App() {
         busy={busy}
         onStart={handleStart}
         onStop={handleStop}
+        onRunCycle={handleRunCycle}
         theme={theme}
         onToggleTheme={toggleTheme}
         username={username}
