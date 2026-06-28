@@ -31,9 +31,10 @@ import auth
 import scheduler
 import settings as settings_module
 from analysis.indicators import calculate_rsi_series
-from config import ALLOWED_ORIGINS, SYMBOLS
+from config import ALLOWED_ORIGINS
 from data.binance import BinanceClient, BinanceClientError
 from db import storage
+from trading.portfolio import calculate_equity
 
 logger = logging.getLogger(__name__)
 
@@ -73,15 +74,16 @@ def health() -> dict:
 
 @app.get("/portfolio")
 def portfolio() -> dict:
-    data = storage.get_portfolio()
-    initial = data["initial_deposit_usdt"]
-    current = data["current_deposit_usdt"]
+    snapshot = calculate_equity()
+    initial = snapshot.initial_deposit_usdt
+    current = snapshot.equity_usdt
     drawdown_pct = ((initial - current) / initial * 100) if initial > 0 else 0.0
     return {
         "initial_deposit_usdt": initial,
         "current_deposit_usdt": current,
         "drawdown_pct": round(drawdown_pct, 2),
-        "updated_at": data["updated_at"],
+        "updated_at": storage.get_portfolio()["updated_at"],
+        "positions": [asdict(p) for p in snapshot.positions],
     }
 
 
@@ -105,27 +107,9 @@ def portfolio_history(days: int = Query(7, ge=1, le=365)) -> list[dict]:
 
 @app.get("/positions")
 def positions() -> list[dict]:
-    client = BinanceClient()
-    open_positions = []
-    for symbol in SYMBOLS:
-        position = storage.get_position(symbol)
-        if position is None or position.total_invested <= 0:
-            continue
-        data = asdict(position)
-        data.update(current_price=None, pnl_usdt=None, pnl_pct=None)
-        try:
-            current_price = client.get_ticker_price(symbol)
-        except BinanceClientError as exc:
-            logger.error("Failed to fetch ticker price for %s: %s", symbol, exc)
-        else:
-            data["current_price"] = current_price
-            if position.avg_price > 0:
-                data["pnl_usdt"] = round(
-                    current_price / position.avg_price * position.total_invested - position.total_invested, 2
-                )
-                data["pnl_pct"] = round((current_price - position.avg_price) / position.avg_price * 100, 2)
-        open_positions.append(data)
-    return open_positions
+    """Kept for any standalone callers; the dashboard now gets positions from /portfolio's
+    single combined response instead of fetching this separately."""
+    return [asdict(p) for p in calculate_equity().positions]
 
 
 @app.get("/trades")
