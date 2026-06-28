@@ -91,6 +91,44 @@ def test_hold_when_only_one_timeframe_is_overbought(monkeypatch):
     assert result.action == "HOLD"
 
 
+def test_buy_ignores_ema_when_trend_filter_disabled(monkeypatch):
+    monkeypatch.setattr(signals, "REQUIRE_EMA_TREND", False)
+    _patch_indicators(
+        monkeypatch,
+        rsi_by_len={1: 20.0, 2: 25.0},  # both oversold...
+        ema_by_len={1: 200.0, 2: 200.0},  # ...but price (100) is below EMA50
+        macd_by_len={1: MACDResult(0.0, 0.0, 0.0), 2: MACDResult(0.0, 0.0, 0.0)},
+    )
+    result = signals.get_signal(CANDLES_15M, CANDLES_1H)
+    assert result.action == "BUY"
+    assert "EMA trend filter disabled" in result.reason
+
+
+def test_sell_ignores_ema_when_trend_filter_disabled(monkeypatch):
+    monkeypatch.setattr(signals, "REQUIRE_EMA_TREND", False)
+    _patch_indicators(
+        monkeypatch,
+        rsi_by_len={1: 70.0, 2: 75.0},  # both overbought...
+        ema_by_len={1: 50.0, 2: 50.0},  # ...but price (100) is above EMA50
+        macd_by_len={1: MACDResult(0.0, 0.0, 0.0), 2: MACDResult(0.0, 0.0, 0.0)},
+    )
+    result = signals.get_signal(CANDLES_15M, CANDLES_1H)
+    assert result.action == "SELL"
+    assert "EMA trend filter disabled" in result.reason
+
+
+def test_hold_when_trend_filter_disabled_but_rsi_not_aligned(monkeypatch):
+    monkeypatch.setattr(signals, "REQUIRE_EMA_TREND", False)
+    _patch_indicators(
+        monkeypatch,
+        rsi_by_len={1: 50.0, 2: 50.0},
+        ema_by_len={1: 200.0, 2: 200.0},
+        macd_by_len={1: MACDResult(0.0, 0.0, 0.0), 2: MACDResult(0.0, 0.0, 0.0)},
+    )
+    result = signals.get_signal(CANDLES_15M, CANDLES_1H)
+    assert result.action == "HOLD"
+
+
 def test_hold_on_neutral_rsi(monkeypatch):
     _patch_indicators(
         monkeypatch,

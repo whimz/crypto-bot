@@ -11,6 +11,7 @@ from data.binance import Candle
 RSI_OVERSOLD = 35
 RSI_OVERBOUGHT = 65
 EMA_PERIOD = 50
+REQUIRE_EMA_TREND = True
 
 
 @dataclass(frozen=True)
@@ -55,40 +56,44 @@ def get_signal(candles_15m: list[Candle], candles_1h: list[Candle]) -> SignalRes
     above_ema = tf15.price > tf15.ema50 and tf1h.price > tf1h.ema50
     below_ema = tf15.price < tf15.ema50 and tf1h.price < tf1h.ema50
 
-    if oversold and above_ema:
+    if oversold and (above_ema or not REQUIRE_EMA_TREND):
         strength = (
             _rsi_strength(tf15.rsi, RSI_OVERSOLD, lower_is_stronger=True)
             + _rsi_strength(tf1h.rsi, RSI_OVERSOLD, lower_is_stronger=True)
         ) / 2
         macd_bonus = 10 if tf15.macd.histogram > 0 and tf1h.macd.histogram > 0 else 0
         confidence = min(100.0, 60 + strength * 30 + macd_bonus)
+        ema_clause = (
+            f"with price above EMA50 (15m={tf15.price:.2f}>{tf15.ema50:.2f}, "
+            f"1h={tf1h.price:.2f}>{tf1h.ema50:.2f})"
+            if REQUIRE_EMA_TREND
+            else "(EMA trend filter disabled - RSI only)"
+        )
         return SignalResult(
             action="BUY",
             confidence=round(confidence, 2),
-            reason=(
-                f"RSI oversold on both timeframes (15m={tf15.rsi:.1f}, 1h={tf1h.rsi:.1f}) "
-                f"with price above EMA50 (15m={tf15.price:.2f}>{tf15.ema50:.2f}, "
-                f"1h={tf1h.price:.2f}>{tf1h.ema50:.2f})"
-            ),
+            reason=f"RSI oversold on both timeframes (15m={tf15.rsi:.1f}, 1h={tf1h.rsi:.1f}) {ema_clause}",
             rsi_15m=tf15.rsi,
             rsi_1h=tf1h.rsi,
         )
 
-    if overbought and below_ema:
+    if overbought and (below_ema or not REQUIRE_EMA_TREND):
         strength = (
             _rsi_strength(tf15.rsi, RSI_OVERBOUGHT, lower_is_stronger=False)
             + _rsi_strength(tf1h.rsi, RSI_OVERBOUGHT, lower_is_stronger=False)
         ) / 2
         macd_bonus = 10 if tf15.macd.histogram < 0 and tf1h.macd.histogram < 0 else 0
         confidence = min(100.0, 60 + strength * 30 + macd_bonus)
+        ema_clause = (
+            f"with price below EMA50 (15m={tf15.price:.2f}<{tf15.ema50:.2f}, "
+            f"1h={tf1h.price:.2f}<{tf1h.ema50:.2f})"
+            if REQUIRE_EMA_TREND
+            else "(EMA trend filter disabled - RSI only)"
+        )
         return SignalResult(
             action="SELL",
             confidence=round(confidence, 2),
-            reason=(
-                f"RSI overbought on both timeframes (15m={tf15.rsi:.1f}, 1h={tf1h.rsi:.1f}) "
-                f"with price below EMA50 (15m={tf15.price:.2f}<{tf15.ema50:.2f}, "
-                f"1h={tf1h.price:.2f}<{tf1h.ema50:.2f})"
-            ),
+            reason=f"RSI overbought on both timeframes (15m={tf15.rsi:.1f}, 1h={tf1h.rsi:.1f}) {ema_clause}",
             rsi_15m=tf15.rsi,
             rsi_1h=tf1h.rsi,
         )

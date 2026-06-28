@@ -31,9 +31,17 @@ class Settings:
     notify_stops: bool = True
     notify_inactive: bool = True
     debug_logging: bool = False
+    require_ema_trend: bool = True
 
 
-_BOOL_FIELDS = {"notify_trades", "notify_errors", "notify_stops", "notify_inactive", "debug_logging"}
+_BOOL_FIELDS = {
+    "notify_trades",
+    "notify_errors",
+    "notify_stops",
+    "notify_inactive",
+    "debug_logging",
+    "require_ema_trend",
+}
 _INT_FIELDS = {"max_dca_count", "cycle_minutes"}
 _FIELD_NAMES = {f.name for f in fields(Settings)}
 
@@ -74,6 +82,7 @@ def apply_settings(settings: Settings) -> None:
 
     signals.RSI_OVERSOLD = settings.rsi_oversold
     signals.RSI_OVERBOUGHT = settings.rsi_overbought
+    signals.REQUIRE_EMA_TREND = settings.require_ema_trend
     risk.TRAILING_STOP_LOSS_PCT = settings.trailing_stop_pct
     risk.MAX_SYMBOL_ALLOCATION_PCT = settings.max_allocation_pct
     risk.MAX_CONSECUTIVE_DCA = settings.max_dca_count
