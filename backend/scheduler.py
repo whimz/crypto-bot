@@ -100,6 +100,29 @@ def set_cycle_minutes(minutes: int) -> None:
         _scheduler.reschedule_job("run_cycle", trigger="interval", minutes=minutes)
 
 
+def _recover_stalled_run_cycle_job() -> None:
+    """_check_inactivity (this function's caller) only gets to run at all because the
+    scheduler thread itself is alive - so if we're here, run_cycle's specific interval
+    trigger is the thing that stopped firing (seen in production after certain pause/resume
+    sequences). Re-adding it with an immediate next_run_time is safe and idempotent: it only
+    resets the schedule entry, it can't disrupt an execution already in flight."""
+    if _scheduler is None:
+        return
+    try:
+        _scheduler.add_job(
+            run_cycle,
+            "interval",
+            minutes=CYCLE_MINUTES,
+            next_run_time=datetime.now(),
+            id="run_cycle",
+            replace_existing=True,
+        )
+        logger.warning("run_cycle had stalled - rescheduled it")
+        telegram.notify_error("Trading cycle had stalled and was rescheduled automatically")
+    except Exception:
+        logger.exception("Failed to reschedule stalled run_cycle job")
+
+
 def _check_inactivity() -> None:
     global _last_inactivity_alert_at
 
@@ -118,6 +141,7 @@ def _check_inactivity() -> None:
     _last_inactivity_alert_at = now
     logger.warning("Bot inactive for %.0f minutes", inactive_minutes)
     telegram.notify_inactive(inactive_minutes)
+    _recover_stalled_run_cycle_job()
 
 
 def run_cycle() -> None:
