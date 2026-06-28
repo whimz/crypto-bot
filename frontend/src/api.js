@@ -102,9 +102,11 @@ export function getTrades(symbol, limit = 50) {
   return request(`/trades?${params.toString()}`);
 }
 
-export function getLogs(symbol, limit = 100, offset = 0) {
+export function getLogs(symbol, limit = 100, offset = 0, dateFrom, dateTo) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (symbol) params.set("symbol", symbol);
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
   return request(`/logs?${params.toString()}`);
 }
 

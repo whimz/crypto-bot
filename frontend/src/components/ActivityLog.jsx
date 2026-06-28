@@ -26,9 +26,22 @@ export default function ActivityLog() {
   const seenErrorIdsRef = useRef(null);
   const scrollRef = useRef(null);
 
+  // Resolved once per dateFrom/dateTo change into absolute UTC instants for the *browser's*
+  // local calendar day - the date-only input value has no "T" time portion, so appending
+  // T00:00:00/T23:59:59.999 (no zone suffix) makes JS parse it as local time, matching what
+  // the user actually meant by "today"/"yesterday".
+  const dateFromIso = useMemo(
+    () => (dateFrom ? new Date(`${dateFrom}T00:00:00`).toISOString() : undefined),
+    [dateFrom]
+  );
+  const dateToIso = useMemo(
+    () => (dateTo ? new Date(`${dateTo}T23:59:59.999`).toISOString() : undefined),
+    [dateTo]
+  );
+
   const refresh = useCallback(async () => {
     try {
-      const data = await getLogs(symbol || undefined, PAGE_SIZE, 0);
+      const data = await getLogs(symbol || undefined, PAGE_SIZE, 0, dateFromIso, dateToIso);
       setLogs(data);
       setHasMore(data.length === PAGE_SIZE);
 
@@ -54,13 +67,13 @@ export default function ActivityLog() {
         retry: refresh,
       });
     }
-  }, [symbol]);
+  }, [symbol, dateFromIso, dateToIso]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const data = await getLogs(symbol || undefined, PAGE_SIZE, logs.length);
+      const data = await getLogs(symbol || undefined, PAGE_SIZE, logs.length, dateFromIso, dateToIso);
       setLogs((current) => [...current, ...data]);
       setHasMore(data.length === PAGE_SIZE);
     } catch (err) {
@@ -73,7 +86,7 @@ export default function ActivityLog() {
     } finally {
       setLoadingMore(false);
     }
-  }, [symbol, logs.length, loadingMore, hasMore]);
+  }, [symbol, dateFromIso, dateToIso, logs.length, loadingMore, hasMore]);
 
   useEffect(() => {
     refresh();
@@ -89,19 +102,12 @@ export default function ActivityLog() {
     }
   };
 
+  // Date range is now filtered on the backend (across the full bot_logs history, not just
+  // the loaded page); only the action filter still applies client-side to what's loaded.
   const filteredLogs = useMemo(() => {
-    // Parse as local time (date-only strings parse as UTC in JS), to match the user's
-    // selected calendar day and the local-time rendering in formatTimestamp().
-    const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
-    const toTime = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
-    return logs.filter((entry) => {
-      if (action !== "All" && entry.action !== action) return false;
-      const entryTime = new Date(entry.timestamp).getTime();
-      if (fromTime !== null && entryTime < fromTime) return false;
-      if (toTime !== null && entryTime > toTime) return false;
-      return true;
-    });
-  }, [logs, action, dateFrom, dateTo]);
+    if (action === "All") return logs;
+    return logs.filter((entry) => entry.action === action);
+  }, [logs, action]);
 
   return (
     <div className="card">

@@ -87,3 +87,43 @@ def test_update_portfolio_sets_initial_deposit_only_on_first_call(db):
     portfolio = db.get_portfolio()
     assert portfolio["initial_deposit_usdt"] == 1000.0  # baseline stays fixed
     assert portfolio["current_deposit_usdt"] == 900.0
+
+
+def _log(timestamp: str) -> "storage.LogEntry":
+    return storage.LogEntry(symbol="BTCUSDT", action="HOLD", confidence=0.0, reason="r", timestamp=timestamp)
+
+
+def test_get_logs_filters_by_date_range_across_full_history_not_just_loaded_page(db):
+    # "Yesterday" and "today" relative to a fixed now, far apart so paging order is unambiguous.
+    db.save_log(_log("2026-01-01T10:00:00+00:00"))  # yesterday
+    db.save_log(_log("2026-01-02T05:00:00+00:00"))  # today, before noon
+    db.save_log(_log("2026-01-02T18:00:00+00:00"))  # today, after noon
+
+    yesterday = db.get_logs(date_from="2026-01-01T00:00:00+00:00", date_to="2026-01-01T23:59:59.999+00:00")
+    assert len(yesterday) == 1
+    assert yesterday[0]["timestamp"] == "2026-01-01T10:00:00+00:00"
+
+    today = db.get_logs(date_from="2026-01-02T00:00:00+00:00", date_to="2026-01-02T23:59:59.999+00:00")
+    assert len(today) == 2
+    assert {row["timestamp"] for row in today} == {"2026-01-02T05:00:00+00:00", "2026-01-02T18:00:00+00:00"}
+
+
+def test_get_logs_date_filter_accepts_js_z_suffixed_iso_strings(db):
+    db.save_log(_log("2026-01-01T10:00:00+00:00"))
+    db.save_log(_log("2026-01-02T05:00:00+00:00"))
+
+    # JS's Date.prototype.toISOString() always emits a "Z" suffix, not "+00:00".
+    result = db.get_logs(date_from="2026-01-02T00:00:00.000Z", date_to="2026-01-02T23:59:59.999Z")
+    assert len(result) == 1
+    assert result[0]["timestamp"] == "2026-01-02T05:00:00+00:00"
+
+
+def test_get_logs_date_filter_combines_with_pagination(db):
+    for hour in range(5):
+        db.save_log(_log(f"2026-01-02T{hour:02d}:00:00+00:00"))
+
+    page1 = db.get_logs(limit=2, offset=0, date_from="2026-01-02T00:00:00+00:00", date_to="2026-01-02T23:59:59.999+00:00")
+    page2 = db.get_logs(limit=2, offset=2, date_from="2026-01-02T00:00:00+00:00", date_to="2026-01-02T23:59:59.999+00:00")
+    assert len(page1) == 2
+    assert len(page2) == 2
+    assert {row["id"] for row in page1}.isdisjoint({row["id"] for row in page2})

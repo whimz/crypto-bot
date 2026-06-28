@@ -197,14 +197,36 @@ def save_log(entry: LogEntry) -> int:
         return cursor.lastrowid
 
 
-def get_logs(symbol: Optional[str] = None, limit: int = 100, offset: int = 0) -> list[dict]:
-    query = "SELECT id, timestamp, symbol, action, confidence, reason, details FROM bot_logs"
-    params: tuple = ()
+def _normalize_iso(value: str) -> str:
+    """Re-serialize an incoming ISO datetime to the same string format bot_logs.timestamp is
+    stored in (datetime.isoformat()), so the SQL string comparison below stays correct
+    regardless of how the caller's ISO string was formatted (e.g. JS's "Z" suffix)."""
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc).isoformat()
+
+
+def get_logs(
+    symbol: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+) -> list[dict]:
+    """`date_from`/`date_to` are absolute ISO instants (already resolved by the caller to
+    whatever calendar-day boundary it cares about, e.g. in the user's local timezone) - this
+    function filters against them as-is and never reinterprets/recomputes the boundaries."""
+    query = "SELECT id, timestamp, symbol, action, confidence, reason, details FROM bot_logs WHERE 1=1"
+    params: list = []
     if symbol:
-        query += " WHERE symbol = ?"
-        params = (symbol,)
+        query += " AND symbol = ?"
+        params.append(symbol)
+    if date_from:
+        query += " AND timestamp >= ?"
+        params.append(_normalize_iso(date_from))
+    if date_to:
+        query += " AND timestamp <= ?"
+        params.append(_normalize_iso(date_to))
     query += " ORDER BY id DESC LIMIT ? OFFSET ?"
-    params = params + (limit, offset)
+    params.extend([limit, offset])
     with _connect() as conn:
         rows = conn.execute(query, params).fetchall()
     return [dict(row) for row in rows]

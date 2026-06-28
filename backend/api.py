@@ -162,8 +162,10 @@ def logs(
     symbol: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
 ) -> list[dict]:
-    entries = storage.get_logs(symbol=symbol, limit=limit, offset=offset)
+    entries = storage.get_logs(symbol=symbol, limit=limit, offset=offset, date_from=date_from, date_to=date_to)
     for entry in entries:
         entry["details"] = json.loads(entry["details"]) if entry["details"] else None
     return entries
