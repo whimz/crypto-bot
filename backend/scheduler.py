@@ -17,6 +17,7 @@ from db import backup, storage
 from notifications import telegram
 from settings import get_settings
 from trading.executor import execute_signal, update_peak_prices
+from trading.portfolio import calculate_equity
 from trading.risk import PositionState
 from trading.signals import SignalResult, get_signal
 
@@ -182,7 +183,7 @@ def run_cycle() -> None:
 
     _last_cycle_at = datetime.now(timezone.utc)
     try:
-        storage.save_portfolio_snapshot(storage.get_portfolio()["current_deposit_usdt"])
+        storage.save_portfolio_snapshot(calculate_equity(client).equity_usdt)
     except Exception:
         logger.exception("Failed to save portfolio history snapshot")
 
