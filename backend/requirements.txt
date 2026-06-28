@@ -6,3 +6,4 @@ apscheduler
 pytest
 python-jose[cryptography]
 passlib
+boto3

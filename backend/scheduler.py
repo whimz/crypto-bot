@@ -8,11 +8,12 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 from analysis.indicators import calculate_ema, calculate_macd, calculate_rsi
 from config import SYMBOLS
 from data.binance import BinanceClient, BinanceClientError, Candle
-from db import storage
+from db import backup, storage
 from notifications import telegram
 from trading.executor import execute_signal, update_peak_prices
 from trading.risk import PositionState
@@ -24,6 +25,7 @@ CYCLE_MINUTES = 15
 CONFIDENCE_THRESHOLD = 70
 INACTIVITY_THRESHOLD_MINUTES = 20
 INACTIVITY_ALERT_COOLDOWN_MINUTES = 60
+DB_BACKUP_CRON = "0 3 * * *"  # 03:00 UTC daily
 
 _scheduler: Optional[BackgroundScheduler] = None
 _running = False
@@ -206,6 +208,11 @@ def start_bot() -> None:
         _scheduler = BackgroundScheduler()
         _scheduler.add_job(run_cycle, "interval", minutes=CYCLE_MINUTES, next_run_time=datetime.now(), id="run_cycle")
         _scheduler.add_job(_check_inactivity, "interval", minutes=5, id="check_inactivity")
+        _scheduler.add_job(
+            backup.run_backup,
+            CronTrigger.from_crontab(DB_BACKUP_CRON, timezone="UTC"),
+            id="db_backup",
+        )
         _scheduler.start()
     else:
         _scheduler.resume()

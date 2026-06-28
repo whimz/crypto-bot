@@ -31,6 +31,11 @@ DB_PATH = os.getenv("DB_PATH", str(Path(__file__).resolve().parent / "data" / "c
 
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
 
+R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
+R2_BUCKET = os.getenv("R2_BUCKET", "")
+R2_ENDPOINT = os.getenv("R2_ENDPOINT", "")
+
 AUTH_USERNAME = os.getenv("AUTH_USERNAME", "admin")
 AUTH_PASSWORD = os.getenv("AUTH_PASSWORD", "")
 

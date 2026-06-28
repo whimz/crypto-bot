@@ -79,15 +79,18 @@ Backend:
 
 Frontend:
 - Login.jsx — авторизация
-- Header.jsx — статус, Start/Stop, аккаунт
+- Header.jsx — статус, Start/Stop, аккаунт, Trade settings в дропдауне
 - Portfolio.jsx — депозит, просадка, Set Deposit
 - Positions.jsx — позиции + PnL
 - Chart.jsx — свечной график + RSI
 - DepositChart.jsx — график депозита во времени
-- ActivityLog.jsx — лог решений бота + фильтры
+- ActivityLog.jsx — лог решений бота + фильтры, пагинация 25 + infinite scroll
 - Trades.jsx — история сделок + экспорт CSV
-- Settings.jsx — настройки стратегии + Tooltip
+- SettingsDrawer.jsx — настройки стратегии в slide-over панели (вызов из Header)
 - Toast.jsx — UI уведомления об ошибках
+- FadeInSection.jsx — fade-in анимация карточек по IntersectionObserver
+- Tailwind CSS — подключён, токены темы/breakpoints в tailwind.config.js
+- Layout: парные карточки 50%/50% в ряд, max-width: min(85vw, 1600px)
 
 Инфраструктура:
 - Railway Volume — персистентная БД
@@ -102,10 +105,6 @@ Frontend: https://crypto-bot-ebg.pages.dev
 
 ### TODO
 TODO — это не команды для работы, а идеи на будущее, реализуются по мере возможности.
-
-
-UI/UX:
-- Пагинация в Activity Log (сейчас лимит 100)
 
 Функционал:
 - Sync Balance с Binance (реальный баланс USDT)
