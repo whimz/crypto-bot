@@ -6,10 +6,21 @@ import csv
 import io
 import json
 import logging
+import sys
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+# Configured here, not in main.py: Railway's start command runs `uvicorn api:app` directly,
+# which imports this module without ever executing main.py - a basicConfig() call there
+# would never run, silently leaving every logger.info() call unhandled (Python's last-resort
+# handler only emits WARNING+, which is why only errors were ever visible in Railway's logs).
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware

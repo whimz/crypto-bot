@@ -2,18 +2,13 @@
 directory is set to backend/, so imports across this package are root-relative, not
 prefixed with `backend.`). Serves api.py (FastAPI) via uvicorn; the API's lifespan hook
 starts/stops scheduler.py's trading loop.
+
+Logging is configured in api.py, not here - Railway's actual start command runs
+`uvicorn api:app` directly, bypassing this file entirely, so this stays a thin convenience
+wrapper for local runs rather than the only place logging gets set up.
 """
 
 from __future__ import annotations
-
-import logging
-import sys
-
-logging.basicConfig(
-    stream=sys.stdout,
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
 
 if __name__ == "__main__":
     import uvicorn
