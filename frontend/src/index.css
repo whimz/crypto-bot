@@ -81,6 +81,7 @@ a {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px 20px;
+  height: 100%;
 }
 
 .card-header-row {
@@ -233,7 +234,7 @@ button:disabled {
 button.primary {
   background: var(--green);
   border-color: var(--green);
-  color: #0d1117;
+  color: #fff;
   font-weight: 600;
 }
 
@@ -515,7 +516,7 @@ tbody tr:hover {
 
 .chart-toggle-group button.active {
   background: var(--accent);
-  color: #0d1117;
+  color: #fff;
   font-weight: 600;
 }
 
@@ -671,6 +672,7 @@ tbody tr:hover {
 
 .settings-save {
   margin-top: 20px;
+  color: #fff;
 }
 
 /* Tooltip */
@@ -695,8 +697,8 @@ tbody tr:hover {
 }
 
 .tooltip-body {
-  position: absolute;
-  top: calc(100% + 8px);
+  /* position/top/left are set inline by Tooltip.jsx (rendered in a portal, clamped to
+     the viewport so the slide-over panel's overflow:auto can never clip it). */
   width: 260px;
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -706,19 +708,11 @@ tbody tr:hover {
   font-weight: 400;
   line-height: 1.5;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  z-index: 20;
+  z-index: 60; /* above SettingsDrawer's z-50, since the tooltip now portals to <body> */
   text-transform: none;
   letter-spacing: normal;
   white-space: normal;
   color: var(--text);
-}
-
-.tooltip-body.tooltip-left {
-  left: 0;
-}
-
-.tooltip-body.tooltip-right {
-  right: 0;
 }
 
 .tooltip-what {

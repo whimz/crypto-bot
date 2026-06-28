@@ -69,7 +69,9 @@ export default function Portfolio({ portfolio, onDepositSaved }) {
     <div className="card">
       <div className="card-header-row">
         <h2>Portfolio</h2>
-        <button onClick={() => setModalOpen(true)}>Set Deposit</button>
+        <button className="primary" onClick={() => setModalOpen(true)}>
+          Set Deposit
+        </button>
       </div>
       <div className="stat-grid">
         <div>
