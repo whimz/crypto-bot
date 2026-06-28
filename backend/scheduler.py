@@ -15,6 +15,7 @@ from config import SYMBOLS
 from data.binance import BinanceClient, BinanceClientError, Candle
 from db import backup, storage
 from notifications import telegram
+from settings import get_settings
 from trading.executor import execute_signal, update_peak_prices
 from trading.risk import PositionState
 from trading.signals import SignalResult, get_signal
@@ -125,6 +126,7 @@ def run_cycle() -> None:
     if not _running:
         return
 
+    debug_logging = get_settings().debug_logging
     client = BinanceClient()
     for symbol in SYMBOLS:
         try:
@@ -138,7 +140,10 @@ def run_cycle() -> None:
                 "[%s] action=%s confidence=%.1f reason=%s",
                 symbol, trade_signal.action, trade_signal.confidence, trade_signal.reason,
             )
-            _log_cycle(symbol, trade_signal, candles_15m, candles_1h)
+            # HOLD is the vast majority of cycles - only log it when debug_logging is on, to
+            # keep the Activity Log free of noise by default. BUY/SELL/errors always log.
+            if trade_signal.action != "HOLD" or debug_logging:
+                _log_cycle(symbol, trade_signal, candles_15m, candles_1h)
 
             if trade_signal.confidence > CONFIDENCE_THRESHOLD:
                 execute_signal(symbol, trade_signal, candles_15m)

@@ -80,6 +80,10 @@ const TELEGRAM_FIELDS = [
   { key: "notify_inactive", label: "Неактивность > 20 минут" },
 ];
 
+const DIAGNOSTICS_FIELDS = [
+  { key: "debug_logging", label: "Подробный лог HOLD-циклов" },
+];
+
 // `form` always holds display values (fractions shown as whole percentages); conversion
 // to/from the API's fraction representation happens only at the load/save boundary.
 function toDisplayForm(field, value) {
@@ -94,6 +98,7 @@ function settingsToForm(settings) {
   const form = {};
   for (const field of FIELDS) form[field.key] = toDisplayForm(field, settings[field.key]);
   for (const field of TELEGRAM_FIELDS) form[field.key] = Boolean(settings[field.key]);
+  for (const field of DIAGNOSTICS_FIELDS) form[field.key] = Boolean(settings[field.key]);
   return form;
 }
 
@@ -133,6 +138,9 @@ export default function Settings() {
         updates[field.key] = toApiValue(field, form[field.key]);
       }
       for (const field of TELEGRAM_FIELDS) {
+        updates[field.key] = Boolean(form[field.key]);
+      }
+      for (const field of DIAGNOSTICS_FIELDS) {
         updates[field.key] = Boolean(form[field.key]);
       }
       const saved = await updateSettings(updates);
@@ -183,6 +191,20 @@ export default function Settings() {
       <h3 className="settings-subheading">Telegram Notifications</h3>
       <div className="settings-toggle-grid">
         {TELEGRAM_FIELDS.map((field) => (
+          <label className="settings-toggle" key={field.key}>
+            <input
+              type="checkbox"
+              checked={Boolean(form[field.key])}
+              onChange={(e) => handleFieldChange(field.key, e.target.checked)}
+            />
+            {form[field.key] ? "🟢" : "⚪"} {field.label}
+          </label>
+        ))}
+      </div>
+
+      <h3 className="settings-subheading">Diagnostics</h3>
+      <div className="settings-toggle-grid">
+        {DIAGNOSTICS_FIELDS.map((field) => (
           <label className="settings-toggle" key={field.key}>
             <input
               type="checkbox"

@@ -30,9 +30,10 @@ class Settings:
     notify_errors: bool = True
     notify_stops: bool = True
     notify_inactive: bool = True
+    debug_logging: bool = False
 
 
-_BOOL_FIELDS = {"notify_trades", "notify_errors", "notify_stops", "notify_inactive"}
+_BOOL_FIELDS = {"notify_trades", "notify_errors", "notify_stops", "notify_inactive", "debug_logging"}
 _INT_FIELDS = {"max_dca_count", "cycle_minutes"}
 _FIELD_NAMES = {f.name for f in fields(Settings)}
 
