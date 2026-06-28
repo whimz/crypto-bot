@@ -92,10 +92,6 @@ export function getPortfolio() {
   return request("/portfolio");
 }
 
-export function getPositions() {
-  return request("/positions");
-}
-
 export function getTrades(symbol, limit = 50) {
   const params = new URLSearchParams({ limit: String(limit) });
   if (symbol) params.set("symbol", symbol);

@@ -14,7 +14,6 @@ import {
   getCurrentUser,
   getHealth,
   getPortfolio,
-  getPositions,
   getToken,
   logout,
   runCycleNow,
@@ -69,14 +68,12 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [healthData, portfolioData, positionsData] = await Promise.all([
-        getHealth(),
-        getPortfolio(),
-        getPositions(),
-      ]);
+      // /portfolio now returns positions in the same response (one shared ticker-price
+      // fetch on the backend), so there's no separate /positions call to make here.
+      const [healthData, portfolioData] = await Promise.all([getHealth(), getPortfolio()]);
       setHealth(healthData);
       setPortfolio(portfolioData);
-      setPositions(positionsData);
+      setPositions(portfolioData.positions ?? []);
 
       const lastCycleAt = healthData?.last_cycle_at ? new Date(healthData.last_cycle_at).getTime() : null;
       const isInactive = lastCycleAt !== null && Date.now() - lastCycleAt > INACTIVITY_THRESHOLD_MS;
