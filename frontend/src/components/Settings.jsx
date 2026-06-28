@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { getSettings, updateSettings } from "../api.js";
 import { showToast } from "../toastBus.js";
 import Tooltip from "./Tooltip.jsx";
@@ -84,6 +85,15 @@ const DIAGNOSTICS_FIELDS = [
   { key: "debug_logging", label: "Подробный лог HOLD-циклов" },
 ];
 
+const ADVANCED_FIELDS = [
+  {
+    key: "require_ema_trend",
+    label: "Require EMA trend filter",
+    what: "Требует совпадения цены с трендом EMA50 на обоих таймфреймах (15м и 1ч) для BUY/SELL, в дополнение к условию RSI",
+    risk: "Когда выключено, бот может покупать/продавать против общего тренда — используйте только для тестирования, не оставляйте выключенным в постоянной работе",
+  },
+];
+
 // `form` always holds display values (fractions shown as whole percentages); conversion
 // to/from the API's fraction representation happens only at the load/save boundary.
 function toDisplayForm(field, value) {
@@ -99,6 +109,7 @@ function settingsToForm(settings) {
   for (const field of FIELDS) form[field.key] = toDisplayForm(field, settings[field.key]);
   for (const field of TELEGRAM_FIELDS) form[field.key] = Boolean(settings[field.key]);
   for (const field of DIAGNOSTICS_FIELDS) form[field.key] = Boolean(settings[field.key]);
+  for (const field of ADVANCED_FIELDS) form[field.key] = Boolean(settings[field.key]);
   return form;
 }
 
@@ -141,6 +152,9 @@ export default function Settings() {
         updates[field.key] = Boolean(form[field.key]);
       }
       for (const field of DIAGNOSTICS_FIELDS) {
+        updates[field.key] = Boolean(form[field.key]);
+      }
+      for (const field of ADVANCED_FIELDS) {
         updates[field.key] = Boolean(form[field.key]);
       }
       const saved = await updateSettings(updates);
@@ -214,6 +228,28 @@ export default function Settings() {
             {form[field.key] ? "🟢" : "⚪"} {field.label}
           </label>
         ))}
+      </div>
+
+      <div className="settings-advanced">
+        <h3 className="settings-advanced-heading">
+          <AlertTriangle size={14} />
+          Advanced / Testing
+        </h3>
+        <div className="settings-toggle-grid">
+          {ADVANCED_FIELDS.map((field) => (
+            <div className="settings-toggle-row" key={field.key}>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={Boolean(form[field.key])}
+                  onChange={(e) => handleFieldChange(field.key, e.target.checked)}
+                />
+                {form[field.key] ? "🟢" : "⚪"} {field.label}
+              </label>
+              <Tooltip what={field.what} risk={field.risk} />
+            </div>
+          ))}
+        </div>
       </div>
 
       <button className="primary settings-save" onClick={handleSave} disabled={saving}>

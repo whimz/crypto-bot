@@ -675,6 +675,32 @@ tbody tr:hover {
   color: #fff;
 }
 
+.settings-advanced {
+  margin-top: 20px;
+  border: 1px solid var(--orange);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: rgba(230, 137, 47, 0.08);
+}
+
+.settings-advanced-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--orange);
+  margin-bottom: 10px;
+}
+
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* Tooltip */
 .tooltip-wrapper {
   position: relative;
