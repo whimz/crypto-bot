@@ -5,6 +5,7 @@ import pytest
 
 import scheduler
 from data.binance import Candle
+from trading.risk import PositionState
 from trading.signals import SignalResult
 
 
@@ -103,3 +104,20 @@ def test_run_cycle_snapshots_live_equity_not_a_stale_stored_value(monkeypatch):
 
     mock_calculate_equity.assert_called_once_with(fake_client)
     mock_save_snapshot.assert_called_once_with(1234.56)
+
+
+def test_close_all_positions_rounds_quote_order_qty(monkeypatch):
+    """/closeall sends total_invested straight to Binance, bypassing risk.py's SELL
+    rounding - it needs its own guard against the same -1111 "too much precision" error."""
+    monkeypatch.setattr(scheduler, "SYMBOLS", ["BTCUSDT"])
+    position = PositionState(symbol="BTCUSDT", avg_price=100.0, total_invested=0.1 + 0.2, dca_count=1, peak_price=100.0)
+    monkeypatch.setattr(scheduler.storage, "get_position", lambda symbol: position)
+    monkeypatch.setattr(scheduler.storage, "update_position", MagicMock())
+    monkeypatch.setattr(scheduler.telegram, "send_message", MagicMock())
+
+    fake_client = MagicMock()
+    monkeypatch.setattr(scheduler, "BinanceClient", MagicMock(return_value=fake_client))
+
+    scheduler._close_all_positions()
+
+    fake_client.place_market_order.assert_called_once_with(symbol="BTCUSDT", side="SELL", quote_order_qty=0.3)

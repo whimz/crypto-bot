@@ -54,10 +54,13 @@ def check_risk(
 
     if signal.action == "SELL":
         # Exits are always allowed regardless of caps/DCA counters - closing risk takes priority.
+        # Rounded like the BUY branch below: total_invested is a running sum of past fills and
+        # can carry IEEE754 noise (e.g. 9.999999999999998) that Binance's quoteOrderQty rejects
+        # with -1111 "too much precision".
         return RiskResult(
             allowed=True,
             reason=f"[{symbol}] SELL signal confirmed, closing position (invested={position.total_invested:.2f} USDT)",
-            order_size_usdt=position.total_invested,
+            order_size_usdt=round(position.total_invested, 2),
         )
 
     # From here on, signal.action == "BUY".

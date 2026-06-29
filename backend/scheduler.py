@@ -198,7 +198,10 @@ def _close_all_positions() -> None:
         if position is None or position.total_invested <= 0:
             continue
         try:
-            client.place_market_order(symbol=symbol, side="SELL", quote_order_qty=position.total_invested)
+            # Rounded for the same reason as risk.py's SELL branch: a stored total_invested
+            # accumulated across DCA fills can carry float noise that Binance's quoteOrderQty
+            # rejects with -1111 "too much precision".
+            client.place_market_order(symbol=symbol, side="SELL", quote_order_qty=round(position.total_invested, 2))
         except BinanceClientError as exc:
             logger.error("Failed to close position for %s: %s", symbol, exc)
             telegram.notify_error(f"Failed to close {symbol} position: {exc}")

@@ -33,6 +33,15 @@ def test_sell_signal_is_always_allowed_and_sized_to_invested_amount():
     assert result.order_size_usdt == 250.0
 
 
+def test_sell_order_size_is_rounded_to_avoid_binance_precision_error():
+    # 0.1 + 0.2 != 0.3 in IEEE754 - exactly the kind of noise repeated DCA fills accumulate
+    # into total_invested. Binance rejects unrounded quoteOrderQty with -1111.
+    position = PositionState(symbol=SYMBOL, avg_price=100.0, total_invested=0.1 + 0.2, dca_count=1, peak_price=120.0)
+    result = check_risk(SYMBOL, 100.0, _signal("SELL"), position, deposit_usdt=1000.0, initial_deposit_usdt=1000.0)
+    assert result.order_size_usdt == 0.3
+    assert len(str(result.order_size_usdt).split(".")[-1]) <= 2
+
+
 def test_sell_bypasses_every_block():
     # Even with a maxed-out DCA count, a triggered trailing stop and a breached global
     # drawdown, closing a position must still be allowed - exits take priority.

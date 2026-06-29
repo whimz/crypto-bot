@@ -68,7 +68,10 @@ def execute_signal(symbol: str, signal: SignalResult, candles_15m: list[Candle])
     if signal.action == "BUY":
         prior_qty = position.total_invested / position.avg_price if position.avg_price > 0 else 0.0
         filled_qty = filled_quote / fill_price if fill_price > 0 else 0.0
-        new_total_invested = position.total_invested + filled_quote
+        # Rounded so float noise from repeated DCA fills doesn't accumulate in the stored
+        # position - otherwise it would surface later as Binance's -1111 "too much precision"
+        # when this total is sent back as a SELL order's quoteOrderQty.
+        new_total_invested = round(position.total_invested + filled_quote, 2)
         new_qty = prior_qty + filled_qty
         updated_position = PositionState(
             symbol=symbol,
