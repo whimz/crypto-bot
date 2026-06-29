@@ -623,9 +623,9 @@ tbody tr:hover {
   background: var(--bg-card);
 }
 
-/* Category stripe: box-shadow on first td (border-collapse:collapse makes it on tr unreliable) */
-.log-row-striped td:first-child {
-  box-shadow: inset 3px 0 0 var(--row-stripe-color);
+/* Category row tint: color-mix gives 8% opacity without needing RGB triplets */
+.log-row-striped {
+  background: color-mix(in srgb, var(--row-stripe-color) 8%, transparent);
 }
 
 .log-legend {
