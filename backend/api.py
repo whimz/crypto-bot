@@ -34,6 +34,7 @@ from analysis.indicators import calculate_rsi_series
 from config import ALLOWED_ORIGINS
 from data.binance import BinanceClient, BinanceClientError
 from db import storage
+from trading.backtesting import SIMULATION_DAYS, TARGET_WEEKLY_RETURN_USDT, run_comparison
 from trading.portfolio import calculate_equity
 
 logger = logging.getLogger(__name__)
@@ -215,3 +216,32 @@ def bot_run_cycle() -> dict:
         raise HTTPException(status_code=409, detail="Bot is not running")
     scheduler.run_cycle()
     return {"status": "ok", "last_cycle_at": scheduler.get_last_cycle_at()}
+
+
+@app.post("/backtest")
+def backtest() -> dict:
+    """On-demand comparison of take-profit/EMA-filter combinations against real history.
+    Takes noticeable time (fetches ~SIMULATION_DAYS of klines, then replays several
+    configs) - the frontend shows a loading state while this is in flight."""
+    try:
+        rows = run_comparison()
+    except BinanceClientError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {
+        "simulation_days": SIMULATION_DAYS,
+        "target_weekly_return_usdt": TARGET_WEEKLY_RETURN_USDT,
+        "rows": [
+            {
+                "label": row.label,
+                "take_profit_pct": row.config.take_profit_pct,
+                "require_ema_trend": row.config.require_ema_trend,
+                "trade_count": row.trade_count,
+                "win_rate_pct": row.win_rate_pct,
+                "avg_weekly_return_usdt": row.avg_weekly_return_usdt,
+                "median_weekly_return_usdt": row.median_weekly_return_usdt,
+                "worst_weekly_return_usdt": row.worst_weekly_return_usdt,
+                "hint": row.hint,
+            }
+            for row in rows
+        ],
+    }

@@ -118,6 +118,12 @@ a {
   gap: 14px;
 }
 
+.modal-card-wide {
+  max-width: min(90vw, 900px);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
 .modal-field {
   display: flex;
   flex-direction: column;

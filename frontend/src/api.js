@@ -123,6 +123,10 @@ export function runCycleNow() {
   return request("/bot/run-cycle", { method: "POST" });
 }
 
+export function runBacktest() {
+  return request("/backtest", { method: "POST" });
+}
+
 export function getSettings() {
   return request("/settings");
 }

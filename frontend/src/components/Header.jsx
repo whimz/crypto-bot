@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Square, RefreshCw, UserCircle, Moon, Sun, LogOut, Settings as SettingsIcon } from "lucide-react";
+import { Play, Square, RefreshCw, UserCircle, Moon, Sun, LogOut, Settings as SettingsIcon, BarChart3 } from "lucide-react";
 
 function LogoMark() {
   return (
@@ -36,6 +36,7 @@ export default function Header({
   onLogout,
   inactive,
   onOpenSettings,
+  onOpenBacktest,
 }) {
   const isRunning = status === "running";
   const label = status ? status : "unknown";
@@ -99,6 +100,15 @@ export default function Header({
                 <button onClick={onToggleTheme}>
                   {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
                   {theme === "dark" ? "Light theme" : "Dark theme"}
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onOpenBacktest();
+                  }}
+                >
+                  <BarChart3 size={16} />
+                  View Backtest
                 </button>
                 <button
                   onClick={() => {

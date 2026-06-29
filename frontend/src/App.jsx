@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ActivityLog from "./components/ActivityLog.jsx";
+import BacktestModal from "./components/BacktestModal.jsx";
 import Chart from "./components/Chart.jsx";
 import DepositChart from "./components/DepositChart.jsx";
 import FadeInSection from "./components/FadeInSection.jsx";
@@ -36,6 +37,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_STORAGE_KEY) || "light");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [backtestOpen, setBacktestOpen] = useState(false);
   // Tracks whether we've already toasted the current inactivity episode, so polling every
   // 30s doesn't spam a new toast each time while the bot stays inactive.
   const inactivityToastedRef = useRef(false);
@@ -199,6 +201,7 @@ export default function App() {
         onLogout={handleLogout}
         inactive={isInactive}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenBacktest={() => setBacktestOpen(true)}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FadeInSection>
@@ -221,6 +224,7 @@ export default function App() {
         </FadeInSection>
       </div>
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {backtestOpen && <BacktestModal onClose={() => setBacktestOpen(false)} />}
       <Toast />
     </>
   );
