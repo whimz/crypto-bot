@@ -25,6 +25,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 from config import SYMBOLS  # noqa: E402
 from data.binance import BinanceClient, BinanceClientError, Candle  # noqa: E402
+from trading.backtesting import ComparisonRow, run_comparison  # noqa: E402
 from trading.signals import get_signal  # noqa: E402
 
 BACKTEST_DAYS = 90
@@ -131,6 +132,18 @@ def _print_summary(symbol: str, evaluations: list[Evaluation]) -> None:
     )
 
 
+def _print_comparison_table(rows: list[ComparisonRow]) -> None:
+    print("\n=== Take-profit / EMA-filter comparison: weekly $ return on a simulated $100 deposit ===")
+    print(f"{'Config':<28s}{'Trades':>7s}{'Win%':>7s}{'Avg/wk':>9s}{'Median/wk':>11s}{'Worst/wk':>10s}  Hint")
+    for row in rows:
+        win_rate = f"{row.win_rate_pct:.1f}" if row.win_rate_pct is not None else "n/a"
+        print(
+            f"{row.label:<28s}{row.trade_count:>7d}{win_rate:>7s}"
+            f"{row.avg_weekly_return_usdt:>+9.2f}{row.median_weekly_return_usdt:>+11.2f}"
+            f"{row.worst_weekly_return_usdt:>+10.2f}  {row.hint}"
+        )
+
+
 def main() -> None:
     client = BinanceClient()
     for symbol in SYMBOLS:
@@ -140,6 +153,14 @@ def main() -> None:
             print(f"[{symbol}] failed to fetch history: {exc}")
             continue
         _print_summary(symbol, evaluations)
+
+    print("\nRunning take-profit/EMA-filter comparison (re-fetches history, can take a while)...")
+    try:
+        rows = run_comparison(client=client)
+    except BinanceClientError as exc:
+        print(f"Comparison failed: {exc}")
+        return
+    _print_comparison_table(rows)
 
 
 if __name__ == "__main__":
