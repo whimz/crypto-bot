@@ -175,8 +175,7 @@ export default function ActivityLog() {
                 return (
                 <tr
                   key={entry.id}
-                  className={cat ? "log-row-striped" : undefined}
-                  style={cat ? { "--row-stripe-color": cat.color } : undefined}
+                  style={cat ? { background: `color-mix(in srgb, ${cat.color} 8%, transparent)` } : undefined}
                 >
                   <td>{formatTimestamp(entry.timestamp)}</td>
                   <td>{formatSymbol(entry.symbol)}</td>

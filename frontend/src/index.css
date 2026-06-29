@@ -623,10 +623,6 @@ tbody tr:hover {
   background: var(--bg-card);
 }
 
-/* Category row tint: color-mix gives 8% opacity without needing RGB triplets */
-.log-row-striped {
-  background: color-mix(in srgb, var(--row-stripe-color) 8%, transparent);
-}
 
 .log-legend {
   display: flex;
