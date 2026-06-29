@@ -623,6 +623,33 @@ tbody tr:hover {
   background: var(--bg-card);
 }
 
+/* Category stripe: box-shadow on first td (border-collapse:collapse makes it on tr unreliable) */
+.log-row-striped td:first-child {
+  box-shadow: inset 3px 0 0 var(--row-stripe-color);
+}
+
+.log-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-bottom: 10px;
+}
+
+.log-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.log-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 /* Settings */
 .settings-grid {
   display: grid;

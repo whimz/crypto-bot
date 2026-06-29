@@ -4,6 +4,16 @@ import { showToast } from "../toastBus.js";
 
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "LTCUSDT"];
 const ACTIONS = ["All", "BUY", "SELL", "HOLD", "ERROR"];
+
+// Single source of truth: category → CSS color token + legend label.
+const CATEGORY_MAP = {
+  TRADE_EXECUTED:             { color: "var(--green)",    label: "Сделка исполнена" },
+  TAKE_PROFIT:                { color: "var(--accent)",   label: "Take-profit" },
+  RISK_BLOCKED:               { color: "var(--orange)",   label: "Заблокировано риск-менеджментом" },
+  SIGNAL_IGNORED_NO_POSITION: { color: "var(--text-dim)", label: "Нет позиции" },
+  ERROR:                      { color: "var(--red)",      label: "Ошибка" },
+  HOLD:                       { color: "var(--border)",   label: "Hold" },
+};
 const POLL_INTERVAL_MS = 30_000;
 const PAGE_SIZE = 25;
 const SCROLL_LOAD_THRESHOLD_PX = 48;
@@ -112,6 +122,14 @@ export default function ActivityLog() {
   return (
     <div className="card">
       <h2>Activity Log</h2>
+      <div className="log-legend">
+        {Object.entries(CATEGORY_MAP).map(([key, { color, label }]) => (
+          <span key={key} className="log-legend-item">
+            <span className="log-legend-dot" style={{ background: color }} />
+            {label}
+          </span>
+        ))}
+      </div>
       <div className="trades-filter">
         <select value={symbol} onChange={(e) => setSymbol(e.target.value)}>
           <option value="">All symbols</option>
@@ -152,8 +170,14 @@ export default function ActivityLog() {
               </tr>
             </thead>
             <tbody>
-              {filteredLogs.map((entry) => (
-                <tr key={entry.id}>
+              {filteredLogs.map((entry) => {
+                const cat = CATEGORY_MAP[entry.category];
+                return (
+                <tr
+                  key={entry.id}
+                  className={cat ? "log-row-striped" : undefined}
+                  style={cat ? { "--row-stripe-color": cat.color } : undefined}
+                >
                   <td>{formatTimestamp(entry.timestamp)}</td>
                   <td>{formatSymbol(entry.symbol)}</td>
                   <td>
@@ -162,7 +186,8 @@ export default function ActivityLog() {
                   <td>{Number(entry.confidence).toFixed(1)}%</td>
                   <td className="log-reason">{entry.reason}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {loadingMore && <div className="empty-state">Loading...</div>}
