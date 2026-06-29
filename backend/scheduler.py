@@ -17,7 +17,15 @@ from db import backup, storage
 from notifications import telegram
 from settings import get_settings
 import trading.risk as risk
-from trading.executor import execute_signal, update_peak_prices
+from trading.executor import (
+    CATEGORY_ERROR,
+    CATEGORY_HOLD,
+    CATEGORY_TAKE_PROFIT,
+    CATEGORY_TRADE_EXECUTED,
+    ExecutionOutcome,
+    execute_signal,
+    update_peak_prices,
+)
 from trading.portfolio import calculate_equity
 from trading.risk import PositionState, check_take_profit
 from trading.signals import SignalResult, get_signal
@@ -55,7 +63,18 @@ def _build_log_details(candles_15m: list[Candle], candles_1h: list[Candle]) -> s
     return json.dumps(details)
 
 
-def _log_cycle(symbol: str, trade_signal: SignalResult, candles_15m: list[Candle], candles_1h: list[Candle]) -> None:
+def _log_cycle(
+    symbol: str,
+    trade_signal: SignalResult,
+    candles_15m: list[Candle],
+    candles_1h: list[Candle],
+    category: Optional[str] = None,
+    reason: Optional[str] = None,
+) -> None:
+    """`category`/`reason` default to None/the signal's own reason for the (rare) case of a
+    BUY/SELL signal that never reached execute_signal at all (confidence below
+    CONFIDENCE_THRESHOLD) - there's no execution outcome to categorize, so the row is left
+    uncategorized rather than guessing at one of the six real categories."""
     try:
         details = _build_log_details(candles_15m, candles_1h)
     except ValueError:
@@ -66,9 +85,10 @@ def _log_cycle(symbol: str, trade_signal: SignalResult, candles_15m: list[Candle
                 symbol=symbol,
                 action=trade_signal.action,
                 confidence=trade_signal.confidence,
-                reason=trade_signal.reason,
+                reason=reason if reason is not None else trade_signal.reason,
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 details=details,
+                category=category,
             )
         )
     except Exception:
@@ -84,6 +104,7 @@ def _log_error(symbol: str, reason: str) -> None:
                 confidence=0.0,
                 reason=reason,
                 timestamp=datetime.now(timezone.utc).isoformat(),
+                category=CATEGORY_ERROR,
             )
         )
     except Exception:
@@ -168,7 +189,8 @@ def run_cycle() -> None:
             # enough above the position's average entry, exit unconditionally rather than
             # waiting for RSI to turn overbought and potentially giving the gain back.
             position = storage.get_position(symbol)
-            if position is not None and check_take_profit(position, current_price):
+            take_profit_triggered = position is not None and check_take_profit(position, current_price)
+            if take_profit_triggered:
                 target_price = position.avg_price * (1 + risk.TAKE_PROFIT_PCT)
                 trade_signal = SignalResult(
                     action="SELL",
@@ -186,13 +208,29 @@ def run_cycle() -> None:
                 "[%s] action=%s confidence=%.1f reason=%s",
                 symbol, trade_signal.action, trade_signal.confidence, trade_signal.reason,
             )
-            # HOLD is the vast majority of cycles - only log it when debug_logging is on, to
-            # keep the Activity Log free of noise by default. BUY/SELL/errors always log.
-            if trade_signal.action != "HOLD" or debug_logging:
-                _log_cycle(symbol, trade_signal, candles_15m, candles_1h)
 
+            if trade_signal.action == "HOLD":
+                # HOLD is the vast majority of cycles - only log it when debug_logging is on,
+                # to keep the Activity Log free of noise by default.
+                if debug_logging:
+                    _log_cycle(symbol, trade_signal, candles_15m, candles_1h, category=CATEGORY_HOLD)
+                continue
+
+            # Logged AFTER execute_signal (not before, as it used to be), so the stored
+            # category/reason reflect what actually happened - not just what the signal
+            # decided before risk.py/Binance even weighed in.
+            outcome = None
             if trade_signal.confidence > CONFIDENCE_THRESHOLD:
-                execute_signal(symbol, trade_signal, candles_15m)
+                outcome = execute_signal(symbol, trade_signal, candles_15m)
+                if take_profit_triggered and outcome.category == CATEGORY_TRADE_EXECUTED:
+                    outcome = ExecutionOutcome(category=CATEGORY_TAKE_PROFIT, reason=outcome.reason)
+
+            if outcome is not None:
+                _log_cycle(symbol, trade_signal, candles_15m, candles_1h, category=outcome.category, reason=outcome.reason)
+            else:
+                # Confidence never even cleared CONFIDENCE_THRESHOLD - execute_signal was never
+                # called, so there's no execution outcome to categorize.
+                _log_cycle(symbol, trade_signal, candles_15m, candles_1h)
         except BinanceClientError as exc:
             logger.error("[%s] Binance error: %s", symbol, exc)
             telegram.notify_error(f"[{symbol}] Binance error: {exc}")

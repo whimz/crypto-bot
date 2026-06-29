@@ -127,3 +127,22 @@ def test_get_logs_date_filter_combines_with_pagination(db):
     assert len(page1) == 2
     assert len(page2) == 2
     assert {row["id"] for row in page1}.isdisjoint({row["id"] for row in page2})
+
+
+def test_save_log_round_trips_category(db):
+    db.save_log(
+        storage.LogEntry(
+            symbol="BTCUSDT", action="BUY", confidence=80.0, reason="r",
+            timestamp="2026-01-01T00:00:00+00:00", category="TRADE_EXECUTED",
+        )
+    )
+    logged = db.get_logs(limit=1)[0]
+    assert logged["category"] == "TRADE_EXECUTED"
+
+
+def test_save_log_defaults_category_to_none(db):
+    """Mirrors a row written before migrate_v3 - the frontend must treat this as
+    "uncategorized", not crash on a missing key."""
+    db.save_log(_log("2026-01-01T00:00:00+00:00"))
+    logged = db.get_logs(limit=1)[0]
+    assert logged["category"] is None

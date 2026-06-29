@@ -5,6 +5,7 @@ import pytest
 
 import scheduler
 from data.binance import Candle
+from trading.executor import CATEGORY_RISK_BLOCKED, ExecutionOutcome
 from trading.risk import PositionState
 from trading.signals import SignalResult
 
@@ -127,8 +128,10 @@ def test_run_cycle_forces_sell_on_take_profit_even_when_signal_is_hold(monkeypat
     monkeypatch.setattr(scheduler, "calculate_equity", MagicMock(return_value=MagicMock(equity_usdt=0.0)))
     monkeypatch.setattr(scheduler.storage, "save_portfolio_snapshot", MagicMock())
 
-    mock_execute_signal = MagicMock()
+    mock_execute_signal = MagicMock(return_value=ExecutionOutcome(category=scheduler.CATEGORY_TRADE_EXECUTED, reason="filled"))
     monkeypatch.setattr(scheduler, "execute_signal", mock_execute_signal)
+    mock_save_log = MagicMock()
+    monkeypatch.setattr(scheduler.storage, "save_log", mock_save_log)
 
     scheduler.run_cycle()
 
@@ -136,6 +139,12 @@ def test_run_cycle_forces_sell_on_take_profit_even_when_signal_is_hold(monkeypat
     forced_signal = mock_execute_signal.call_args[0][1]
     assert forced_signal.action == "SELL"
     assert "Take-profit" in forced_signal.reason
+
+    # A TRADE_EXECUTED outcome triggered by take-profit must be re-labeled TAKE_PROFIT before
+    # it's written - that's the whole point of distinguishing it from a normal signal-driven sell.
+    logged_entry = mock_save_log.call_args[0][0]
+    assert logged_entry.category == scheduler.CATEGORY_TAKE_PROFIT
+    assert logged_entry.reason == "filled"
 
 
 def test_run_cycle_does_not_force_sell_when_take_profit_disabled(monkeypatch):
@@ -163,6 +172,133 @@ def test_run_cycle_does_not_force_sell_when_take_profit_disabled(monkeypatch):
     scheduler.run_cycle()
 
     mock_execute_signal.assert_not_called()  # HOLD, confidence 0.0 - never crosses CONFIDENCE_THRESHOLD
+
+
+def test_run_cycle_logs_hold_category_only_when_debug_logging_enabled(monkeypatch):
+    monkeypatch.setattr(scheduler, "_running", True)
+    monkeypatch.setattr(scheduler, "SYMBOLS", ["BTCUSDT"])
+    monkeypatch.setattr(scheduler, "get_settings", lambda: MagicMock(debug_logging=True))
+    monkeypatch.setattr(scheduler.risk, "TAKE_PROFIT_PCT", 0.0)
+
+    fake_client = MagicMock()
+    fake_client.get_klines.return_value = [_fake_candle()]
+    monkeypatch.setattr(scheduler, "BinanceClient", MagicMock(return_value=fake_client))
+    monkeypatch.setattr(
+        scheduler, "get_signal",
+        lambda *_args: SignalResult(action="HOLD", confidence=0.0, reason="no aligned signal", rsi_15m=50.0, rsi_1h=50.0),
+    )
+    monkeypatch.setattr(scheduler.storage, "get_position", lambda symbol: None)
+    monkeypatch.setattr(scheduler, "calculate_equity", MagicMock(return_value=MagicMock(equity_usdt=0.0)))
+    monkeypatch.setattr(scheduler.storage, "save_portfolio_snapshot", MagicMock())
+    mock_save_log = MagicMock()
+    monkeypatch.setattr(scheduler.storage, "save_log", mock_save_log)
+
+    scheduler.run_cycle()
+
+    mock_save_log.assert_called_once()
+    assert mock_save_log.call_args[0][0].category == scheduler.CATEGORY_HOLD
+
+
+def test_run_cycle_does_not_log_hold_when_debug_logging_disabled(monkeypatch):
+    monkeypatch.setattr(scheduler, "_running", True)
+    monkeypatch.setattr(scheduler, "SYMBOLS", ["BTCUSDT"])
+    monkeypatch.setattr(scheduler, "get_settings", lambda: MagicMock(debug_logging=False))
+    monkeypatch.setattr(scheduler.risk, "TAKE_PROFIT_PCT", 0.0)
+
+    fake_client = MagicMock()
+    fake_client.get_klines.return_value = [_fake_candle()]
+    monkeypatch.setattr(scheduler, "BinanceClient", MagicMock(return_value=fake_client))
+    monkeypatch.setattr(
+        scheduler, "get_signal",
+        lambda *_args: SignalResult(action="HOLD", confidence=0.0, reason="no aligned signal", rsi_15m=50.0, rsi_1h=50.0),
+    )
+    monkeypatch.setattr(scheduler.storage, "get_position", lambda symbol: None)
+    monkeypatch.setattr(scheduler, "calculate_equity", MagicMock(return_value=MagicMock(equity_usdt=0.0)))
+    monkeypatch.setattr(scheduler.storage, "save_portfolio_snapshot", MagicMock())
+    mock_save_log = MagicMock()
+    monkeypatch.setattr(scheduler.storage, "save_log", mock_save_log)
+
+    scheduler.run_cycle()
+
+    mock_save_log.assert_not_called()
+
+
+def test_run_cycle_logs_risk_blocked_category_for_blocked_buy(monkeypatch):
+    monkeypatch.setattr(scheduler, "_running", True)
+    monkeypatch.setattr(scheduler, "SYMBOLS", ["BTCUSDT"])
+    monkeypatch.setattr(scheduler, "get_settings", lambda: MagicMock(debug_logging=False))
+    monkeypatch.setattr(scheduler.risk, "TAKE_PROFIT_PCT", 0.0)
+
+    fake_client = MagicMock()
+    fake_client.get_klines.return_value = [_fake_candle()]
+    monkeypatch.setattr(scheduler, "BinanceClient", MagicMock(return_value=fake_client))
+    monkeypatch.setattr(
+        scheduler, "get_signal",
+        lambda *_args: SignalResult(action="BUY", confidence=80.0, reason="oversold", rsi_15m=20.0, rsi_1h=20.0),
+    )
+    monkeypatch.setattr(scheduler.storage, "get_position", lambda symbol: None)
+    monkeypatch.setattr(scheduler, "calculate_equity", MagicMock(return_value=MagicMock(equity_usdt=0.0)))
+    monkeypatch.setattr(scheduler.storage, "save_portfolio_snapshot", MagicMock())
+    mock_save_log = MagicMock()
+    monkeypatch.setattr(scheduler.storage, "save_log", mock_save_log)
+    monkeypatch.setattr(
+        scheduler, "execute_signal",
+        MagicMock(return_value=ExecutionOutcome(category=CATEGORY_RISK_BLOCKED, reason="blocked: cap reached")),
+    )
+
+    scheduler.run_cycle()
+
+    logged_entry = mock_save_log.call_args[0][0]
+    assert logged_entry.category == CATEGORY_RISK_BLOCKED
+    assert logged_entry.reason == "blocked: cap reached"
+
+
+def test_run_cycle_leaves_category_uncategorized_below_confidence_threshold(monkeypatch):
+    monkeypatch.setattr(scheduler, "_running", True)
+    monkeypatch.setattr(scheduler, "SYMBOLS", ["BTCUSDT"])
+    monkeypatch.setattr(scheduler, "get_settings", lambda: MagicMock(debug_logging=False))
+    monkeypatch.setattr(scheduler.risk, "TAKE_PROFIT_PCT", 0.0)
+    monkeypatch.setattr(scheduler, "CONFIDENCE_THRESHOLD", 95)  # signal's confidence (80) won't clear this
+
+    fake_client = MagicMock()
+    fake_client.get_klines.return_value = [_fake_candle()]
+    monkeypatch.setattr(scheduler, "BinanceClient", MagicMock(return_value=fake_client))
+    monkeypatch.setattr(
+        scheduler, "get_signal",
+        lambda *_args: SignalResult(action="BUY", confidence=80.0, reason="oversold", rsi_15m=20.0, rsi_1h=20.0),
+    )
+    monkeypatch.setattr(scheduler.storage, "get_position", lambda symbol: None)
+    monkeypatch.setattr(scheduler, "calculate_equity", MagicMock(return_value=MagicMock(equity_usdt=0.0)))
+    monkeypatch.setattr(scheduler.storage, "save_portfolio_snapshot", MagicMock())
+    mock_save_log = MagicMock()
+    monkeypatch.setattr(scheduler.storage, "save_log", mock_save_log)
+    mock_execute_signal = MagicMock()
+    monkeypatch.setattr(scheduler, "execute_signal", mock_execute_signal)
+
+    scheduler.run_cycle()
+
+    mock_execute_signal.assert_not_called()
+    logged_entry = mock_save_log.call_args[0][0]
+    assert logged_entry.category is None
+
+
+def test_run_cycle_logs_error_category_on_binance_failure(monkeypatch):
+    monkeypatch.setattr(scheduler, "_running", True)
+    monkeypatch.setattr(scheduler, "SYMBOLS", ["BTCUSDT"])
+    monkeypatch.setattr(scheduler, "get_settings", lambda: MagicMock(debug_logging=False))
+
+    fake_client = MagicMock()
+    fake_client.get_klines.side_effect = scheduler.BinanceClientError("rate limited")
+    monkeypatch.setattr(scheduler, "BinanceClient", MagicMock(return_value=fake_client))
+    monkeypatch.setattr(scheduler, "calculate_equity", MagicMock(return_value=MagicMock(equity_usdt=0.0)))
+    monkeypatch.setattr(scheduler.storage, "save_portfolio_snapshot", MagicMock())
+    mock_save_log = MagicMock()
+    monkeypatch.setattr(scheduler.storage, "save_log", mock_save_log)
+
+    scheduler.run_cycle()
+
+    logged_entry = mock_save_log.call_args[0][0]
+    assert logged_entry.category == scheduler.CATEGORY_ERROR
 
 
 def test_close_all_positions_rounds_quote_order_qty(monkeypatch):

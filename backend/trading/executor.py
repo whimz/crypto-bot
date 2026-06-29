@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from data.binance import BinanceClient, BinanceClientError, Candle
@@ -12,6 +13,26 @@ from trading.risk import PositionState, check_risk
 from trading.signals import SignalResult
 
 logger = logging.getLogger(__name__)
+
+# Activity Log row categories - the single source of truth for these strings. Defined here
+# (not duplicated in scheduler.py) even though TAKE_PROFIT/HOLD are never returned by
+# execute_signal itself - scheduler.py imports them from here too, so every category string
+# used anywhere in the backend lives in exactly one place.
+CATEGORY_TRADE_EXECUTED = "TRADE_EXECUTED"
+CATEGORY_TAKE_PROFIT = "TAKE_PROFIT"
+CATEGORY_RISK_BLOCKED = "RISK_BLOCKED"
+CATEGORY_SIGNAL_IGNORED_NO_POSITION = "SIGNAL_IGNORED_NO_POSITION"
+CATEGORY_ERROR = "ERROR"
+CATEGORY_HOLD = "HOLD"
+
+
+@dataclass(frozen=True)
+class ExecutionOutcome:
+    """What actually happened when execute_signal() was called - distinct from the signal's
+    own action/reason, since a BUY/SELL signal can still result in nothing happening."""
+
+    category: str
+    reason: str
 
 
 def _empty_position(symbol: str) -> PositionState:
@@ -27,14 +48,15 @@ def _extract_fill(order: dict, fallback_price: float, fallback_quote: float) -> 
     return fallback_price, fallback_quote
 
 
-def execute_signal(symbol: str, signal: SignalResult, candles_15m: list[Candle]) -> None:
+def execute_signal(symbol: str, signal: SignalResult, candles_15m: list[Candle]) -> ExecutionOutcome:
     current_price = candles_15m[-1].close
 
     position = storage.get_position(symbol) or _empty_position(symbol)
 
     if signal.action == "SELL" and (not position or position.total_invested <= 0):
-        logger.info("[%s] No position to sell, skipping", symbol)
-        return
+        reason = f"[{symbol}] No position to sell, skipping"
+        logger.info(reason)
+        return ExecutionOutcome(category=CATEGORY_SIGNAL_IGNORED_NO_POSITION, reason=reason)
 
     portfolio = storage.get_portfolio()
 
@@ -48,8 +70,9 @@ def execute_signal(symbol: str, signal: SignalResult, candles_15m: list[Candle])
     )
 
     if not risk_result.allowed:
-        logger.info("Trade blocked for %s %s: %s", signal.action, symbol, risk_result.reason)
-        return
+        reason = f"Trade blocked for {signal.action} {symbol}: {risk_result.reason}"
+        logger.info(reason)
+        return ExecutionOutcome(category=CATEGORY_RISK_BLOCKED, reason=reason)
 
     client = BinanceClient()
     try:
@@ -59,9 +82,10 @@ def execute_signal(symbol: str, signal: SignalResult, candles_15m: list[Candle])
             quote_order_qty=risk_result.order_size_usdt,
         )
     except BinanceClientError as exc:
-        logger.error("Order failed for %s %s: %s", signal.action, symbol, exc)
-        telegram.notify_error(f"Order failed for {signal.action} {symbol}: {exc}")
-        return
+        reason = f"Order failed for {signal.action} {symbol}: {exc}"
+        logger.error(reason)
+        telegram.notify_error(reason)
+        return ExecutionOutcome(category=CATEGORY_ERROR, reason=reason)
 
     fill_price, filled_quote = _extract_fill(order, current_price, risk_result.order_size_usdt)
 
@@ -107,6 +131,8 @@ def execute_signal(symbol: str, signal: SignalResult, candles_15m: list[Candle])
         reason=risk_result.reason,
         confidence=signal.confidence,
     )
+
+    return ExecutionOutcome(category=CATEGORY_TRADE_EXECUTED, reason=risk_result.reason)
 
 
 def update_peak_prices(symbol: str, current_price: float) -> None:

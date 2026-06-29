@@ -38,6 +38,7 @@ class LogEntry:
     reason: str
     timestamp: str
     details: str = ""  # JSON-encoded indicator breakdown (RSI/EMA/MACD per timeframe)
+    category: Optional[str] = None  # TRADE_EXECUTED/TAKE_PROFIT/RISK_BLOCKED/etc, see trading/executor.py
     id: Optional[int] = None
 
 
@@ -136,11 +137,20 @@ def migrate_v2(conn: sqlite3.Connection) -> None:
     )
 
 
+def migrate_v3(conn: sqlite3.Connection) -> None:
+    """Explicit category per bot_logs row (TRADE_EXECUTED/TAKE_PROFIT/RISK_BLOCKED/
+    SIGNAL_IGNORED_NO_POSITION/ERROR/HOLD) so the Activity Log can color-code rows without
+    parsing the human-readable reason text. NULL for every row written before this migration -
+    callers treat that as "uncategorized", not an error."""
+    conn.execute("ALTER TABLE bot_logs ADD COLUMN category TEXT")
+
+
 # Ordered (version, migration) pairs. Add new migrations by appending here - never edit or
 # reorder an already-shipped entry, or Railway's existing DB will skip/redo it incorrectly.
 MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, migrate_v1),
     (2, migrate_v2),
+    (3, migrate_v3),
 ]
 
 
@@ -189,10 +199,10 @@ def save_log(entry: LogEntry) -> int:
     with _connect() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO bot_logs (timestamp, symbol, action, confidence, reason, details)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO bot_logs (timestamp, symbol, action, confidence, reason, details, category)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (entry.timestamp, entry.symbol, entry.action, entry.confidence, entry.reason, entry.details),
+            (entry.timestamp, entry.symbol, entry.action, entry.confidence, entry.reason, entry.details, entry.category),
         )
         return cursor.lastrowid
 
@@ -214,7 +224,7 @@ def get_logs(
     """`date_from`/`date_to` are absolute ISO instants (already resolved by the caller to
     whatever calendar-day boundary it cares about, e.g. in the user's local timezone) - this
     function filters against them as-is and never reinterprets/recomputes the boundaries."""
-    query = "SELECT id, timestamp, symbol, action, confidence, reason, details FROM bot_logs WHERE 1=1"
+    query = "SELECT id, timestamp, symbol, action, confidence, reason, details, category FROM bot_logs WHERE 1=1"
     params: list = []
     if symbol:
         query += " AND symbol = ?"
