@@ -106,6 +106,65 @@ def test_run_cycle_snapshots_live_equity_not_a_stale_stored_value(monkeypatch):
     mock_save_snapshot.assert_called_once_with(1234.56)
 
 
+def test_run_cycle_forces_sell_on_take_profit_even_when_signal_is_hold(monkeypatch):
+    """Take-profit must override signals.get_signal()'s verdict - RSI/EMA staying neutral
+    (HOLD) should not block an exit once the price target is reached."""
+    monkeypatch.setattr(scheduler, "_running", True)
+    monkeypatch.setattr(scheduler, "SYMBOLS", ["BTCUSDT"])
+    monkeypatch.setattr(scheduler, "get_settings", lambda: MagicMock(debug_logging=False))
+    monkeypatch.setattr(scheduler.risk, "TAKE_PROFIT_PCT", 0.05)
+
+    fake_client = MagicMock()
+    fake_client.get_klines.return_value = [_fake_candle(close=105.0)]
+    monkeypatch.setattr(scheduler, "BinanceClient", MagicMock(return_value=fake_client))
+    monkeypatch.setattr(
+        scheduler,
+        "get_signal",
+        lambda *_args: SignalResult(action="HOLD", confidence=0.0, reason="no aligned signal", rsi_15m=50.0, rsi_1h=50.0),
+    )
+    position = PositionState(symbol="BTCUSDT", avg_price=100.0, total_invested=100.0, dca_count=1, peak_price=105.0)
+    monkeypatch.setattr(scheduler.storage, "get_position", lambda symbol: position)
+    monkeypatch.setattr(scheduler, "calculate_equity", MagicMock(return_value=MagicMock(equity_usdt=0.0)))
+    monkeypatch.setattr(scheduler.storage, "save_portfolio_snapshot", MagicMock())
+
+    mock_execute_signal = MagicMock()
+    monkeypatch.setattr(scheduler, "execute_signal", mock_execute_signal)
+
+    scheduler.run_cycle()
+
+    mock_execute_signal.assert_called_once()
+    forced_signal = mock_execute_signal.call_args[0][1]
+    assert forced_signal.action == "SELL"
+    assert "Take-profit" in forced_signal.reason
+
+
+def test_run_cycle_does_not_force_sell_when_take_profit_disabled(monkeypatch):
+    monkeypatch.setattr(scheduler, "_running", True)
+    monkeypatch.setattr(scheduler, "SYMBOLS", ["BTCUSDT"])
+    monkeypatch.setattr(scheduler, "get_settings", lambda: MagicMock(debug_logging=False))
+    monkeypatch.setattr(scheduler.risk, "TAKE_PROFIT_PCT", 0.0)  # disabled (default)
+
+    fake_client = MagicMock()
+    fake_client.get_klines.return_value = [_fake_candle(close=105.0)]
+    monkeypatch.setattr(scheduler, "BinanceClient", MagicMock(return_value=fake_client))
+    monkeypatch.setattr(
+        scheduler,
+        "get_signal",
+        lambda *_args: SignalResult(action="HOLD", confidence=0.0, reason="no aligned signal", rsi_15m=50.0, rsi_1h=50.0),
+    )
+    position = PositionState(symbol="BTCUSDT", avg_price=100.0, total_invested=100.0, dca_count=1, peak_price=105.0)
+    monkeypatch.setattr(scheduler.storage, "get_position", lambda symbol: position)
+    monkeypatch.setattr(scheduler, "calculate_equity", MagicMock(return_value=MagicMock(equity_usdt=0.0)))
+    monkeypatch.setattr(scheduler.storage, "save_portfolio_snapshot", MagicMock())
+
+    mock_execute_signal = MagicMock()
+    monkeypatch.setattr(scheduler, "execute_signal", mock_execute_signal)
+
+    scheduler.run_cycle()
+
+    mock_execute_signal.assert_not_called()  # HOLD, confidence 0.0 - never crosses CONFIDENCE_THRESHOLD
+
+
 def test_close_all_positions_rounds_quote_order_qty(monkeypatch):
     """/closeall sends total_invested straight to Binance, bypassing risk.py's SELL
     rounding - it needs its own guard against the same -1111 "too much precision" error."""

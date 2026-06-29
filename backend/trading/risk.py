@@ -10,6 +10,7 @@ MAX_SYMBOL_ALLOCATION_PCT = 0.40
 MAX_CONSECUTIVE_DCA = 3
 TRAILING_STOP_LOSS_PCT = 0.07
 GLOBAL_DRAWDOWN_STOP_PCT = 0.20
+TAKE_PROFIT_PCT = 0.0  # 0 disables - the caller (scheduler.py) never forces an exit
 
 # RSI bands -> volatility-scaled order size, as a fraction of total deposit.
 RSI_LOW_VOLATILITY_PCT = 0.15  # RSI 35-50
@@ -39,6 +40,16 @@ def _order_size_pct(avg_rsi: float) -> tuple[float, str]:
     if avg_rsi < 35:
         return RSI_MEDIUM_VOLATILITY_PCT, "medium volatility (RSI 20-35)"
     return RSI_LOW_VOLATILITY_PCT, "low volatility (RSI 35-50)"
+
+
+def check_take_profit(position: PositionState, current_price: float) -> bool:
+    """True once price has risen TAKE_PROFIT_PCT above the position's average entry. The
+    caller (scheduler.py) treats this as an unconditional exit signal, independent of
+    signals.get_signal()'s RSI/EMA verdict - waiting for RSI to turn overbought could give
+    back a gain that's already there. 0 (default) disables this entirely."""
+    if TAKE_PROFIT_PCT <= 0 or position.avg_price <= 0:
+        return False
+    return current_price >= position.avg_price * (1 + TAKE_PROFIT_PCT)
 
 
 def check_risk(

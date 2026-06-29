@@ -6,6 +6,7 @@ from trading.risk import (
     MAX_SYMBOL_ALLOCATION_PCT,
     PositionState,
     check_risk,
+    check_take_profit,
 )
 from trading.signals import SignalResult
 
@@ -115,6 +116,30 @@ def test_allocation_cap_limits_order_size_to_remaining_allowance():
     result = check_risk(SYMBOL, 100.0, _signal("BUY", rsi_15m=40.0, rsi_1h=40.0), position, deposit_usdt=1000.0, initial_deposit_usdt=1000.0)
     assert result.allowed is True
     assert result.order_size_usdt == 10.0
+
+
+def test_take_profit_disabled_by_default_never_triggers():
+    position = PositionState(symbol=SYMBOL, avg_price=100.0, total_invested=100.0, dca_count=1, peak_price=100.0)
+    assert check_take_profit(position, current_price=1000.0) is False
+
+
+def test_take_profit_triggers_once_price_reaches_target(monkeypatch):
+    import trading.risk as risk
+
+    monkeypatch.setattr(risk, "TAKE_PROFIT_PCT", 0.05)
+    position = PositionState(symbol=SYMBOL, avg_price=100.0, total_invested=100.0, dca_count=1, peak_price=100.0)
+
+    assert check_take_profit(position, current_price=104.99) is False
+    assert check_take_profit(position, current_price=105.0) is True
+    assert check_take_profit(position, current_price=110.0) is True
+
+
+def test_take_profit_ignores_a_closed_or_missing_position(monkeypatch):
+    import trading.risk as risk
+
+    monkeypatch.setattr(risk, "TAKE_PROFIT_PCT", 0.05)
+    closed_position = PositionState(symbol=SYMBOL, avg_price=0.0, total_invested=0.0, dca_count=0, peak_price=0.0)
+    assert check_take_profit(closed_position, current_price=1000.0) is False
 
 
 @pytest.mark.parametrize(

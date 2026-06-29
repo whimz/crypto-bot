@@ -16,9 +16,10 @@ from data.binance import BinanceClient, BinanceClientError, Candle
 from db import backup, storage
 from notifications import telegram
 from settings import get_settings
+import trading.risk as risk
 from trading.executor import execute_signal, update_peak_prices
 from trading.portfolio import calculate_equity
-from trading.risk import PositionState
+from trading.risk import PositionState, check_take_profit
 from trading.signals import SignalResult, get_signal
 
 logger = logging.getLogger(__name__)
@@ -158,9 +159,29 @@ def run_cycle() -> None:
             candles_15m = client.get_klines(symbol=symbol, interval="15m", limit=100)
             candles_1h = client.get_klines(symbol=symbol, interval="1h", limit=100)
 
-            update_peak_prices(symbol, candles_15m[-1].close)
+            current_price = candles_15m[-1].close
+            update_peak_prices(symbol, current_price)
 
             trade_signal = get_signal(candles_15m, candles_1h)
+
+            # Take-profit overrides whatever signals.py decided: once price has risen far
+            # enough above the position's average entry, exit unconditionally rather than
+            # waiting for RSI to turn overbought and potentially giving the gain back.
+            position = storage.get_position(symbol)
+            if position is not None and check_take_profit(position, current_price):
+                target_price = position.avg_price * (1 + risk.TAKE_PROFIT_PCT)
+                trade_signal = SignalResult(
+                    action="SELL",
+                    confidence=100.0,
+                    reason=(
+                        f"[{symbol}] Take-profit triggered: price {current_price:.2f} >= target "
+                        f"{target_price:.2f} ({risk.TAKE_PROFIT_PCT * 100:.1f}% above avg entry "
+                        f"{position.avg_price:.2f})"
+                    ),
+                    rsi_15m=trade_signal.rsi_15m,
+                    rsi_1h=trade_signal.rsi_1h,
+                )
+
             logger.info(
                 "[%s] action=%s confidence=%.1f reason=%s",
                 symbol, trade_signal.action, trade_signal.confidence, trade_signal.reason,

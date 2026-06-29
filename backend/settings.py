@@ -32,6 +32,7 @@ class Settings:
     notify_inactive: bool = True
     debug_logging: bool = False
     require_ema_trend: bool = True
+    take_profit_pct: float = 0.0  # 0 disables - preserves current behavior
 
 
 _BOOL_FIELDS = {
@@ -87,6 +88,7 @@ def apply_settings(settings: Settings) -> None:
     risk.MAX_SYMBOL_ALLOCATION_PCT = settings.max_allocation_pct
     risk.MAX_CONSECUTIVE_DCA = settings.max_dca_count
     risk.GLOBAL_DRAWDOWN_STOP_PCT = settings.global_stop_pct
+    risk.TAKE_PROFIT_PCT = settings.take_profit_pct
     scheduler.CONFIDENCE_THRESHOLD = settings.confidence_threshold
     scheduler.set_cycle_minutes(settings.cycle_minutes)
     logger.info("Settings applied: %s", asdict(settings))
