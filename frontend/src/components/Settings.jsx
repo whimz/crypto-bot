@@ -166,7 +166,12 @@ export default function Settings() {
       for (const field of ADVANCED_FIELDS) {
         updates[field.key] = Boolean(form[field.key]);
       }
-      const saved = await updateSettings(updates);
+      const sanitized = Object.fromEntries(
+        Object.entries(updates).map(([k, v]) =>
+          [k, typeof v === "number" ? parseFloat(v.toFixed(4)) : v]
+        )
+      );
+      const saved = await updateSettings(sanitized);
       setSettings(saved);
       setForm(settingsToForm(saved));
       showToast({ title: "Settings saved", description: "Strategy parameters updated successfully." });
