@@ -106,6 +106,21 @@ def portfolio_history(days: int = Query(7, ge=1, le=365)) -> list[dict]:
     return storage.get_portfolio_history(since)
 
 
+@app.get("/portfolio/pnl")
+def portfolio_pnl() -> dict:
+    data = storage.get_pnl_summary()
+    total = data["total_trades"]
+    winning = data["winning_trades"]
+    win_rate = round(winning / total * 100, 1) if total > 0 else None
+    return {
+        "realized_pnl_usdt": data["realized_pnl_usdt"],
+        "total_trades": total,
+        "winning_trades": winning,
+        "losing_trades": data["losing_trades"],
+        "win_rate_pct": win_rate,
+    }
+
+
 @app.get("/positions")
 def positions() -> list[dict]:
     """Kept for any standalone callers; the dashboard now gets positions from /portfolio's

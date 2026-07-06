@@ -107,6 +107,8 @@ def execute_signal(symbol: str, signal: SignalResult, candles_15m: list[Candle])
     else:  # SELL closes the whole position
         updated_position = _empty_position(symbol)
 
+    realized_pnl = round(filled_quote - position.total_invested, 2) if signal.action == "SELL" else None
+
     try:
         storage.update_position(updated_position)
         storage.save_trade(
@@ -118,6 +120,7 @@ def execute_signal(symbol: str, signal: SignalResult, candles_15m: list[Candle])
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 reason=risk_result.reason,
                 confidence=signal.confidence,
+                realized_pnl=realized_pnl,
             )
         )
     except Exception:

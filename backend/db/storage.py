@@ -27,6 +27,7 @@ class Trade:
     timestamp: str
     reason: str
     confidence: float
+    realized_pnl: Optional[float] = None
     id: Optional[int] = None
 
 
@@ -145,12 +146,20 @@ def migrate_v3(conn: sqlite3.Connection) -> None:
     conn.execute("ALTER TABLE bot_logs ADD COLUMN category TEXT")
 
 
+def migrate_v4(conn: sqlite3.Connection) -> None:
+    """Realized P&L column on trades so the P&L Summary widget can aggregate closed-trade
+    performance without re-deriving it from position history. NULL for BUY rows and for all
+    rows written before this migration (no way to reconstruct the entry cost basis)."""
+    conn.execute("ALTER TABLE trades ADD COLUMN realized_pnl REAL")
+
+
 # Ordered (version, migration) pairs. Add new migrations by appending here - never edit or
 # reorder an already-shipped entry, or Railway's existing DB will skip/redo it incorrectly.
 MIGRATIONS: list[tuple[int, Callable[[sqlite3.Connection], None]]] = [
     (1, migrate_v1),
     (2, migrate_v2),
     (3, migrate_v3),
+    (4, migrate_v4),
 ]
 
 
@@ -187,10 +196,10 @@ def save_trade(trade: Trade) -> int:
     with _connect() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO trades (symbol, action, price, amount_usdt, timestamp, reason, confidence)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO trades (symbol, action, price, amount_usdt, timestamp, reason, confidence, realized_pnl)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (trade.symbol, trade.action, trade.price, trade.amount_usdt, trade.timestamp, trade.reason, trade.confidence),
+            (trade.symbol, trade.action, trade.price, trade.amount_usdt, trade.timestamp, trade.reason, trade.confidence, trade.realized_pnl),
         )
         return cursor.lastrowid
 
@@ -364,6 +373,22 @@ def get_trades_filtered(
     with _connect() as conn:
         rows = conn.execute(query, params).fetchall()
     return [dict(row) for row in rows]
+
+
+def get_pnl_summary() -> dict:
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                COALESCE(SUM(realized_pnl), 0) AS realized_pnl_usdt,
+                COUNT(*) AS total_trades,
+                COUNT(CASE WHEN realized_pnl > 0 THEN 1 END) AS winning_trades,
+                COUNT(CASE WHEN realized_pnl < 0 THEN 1 END) AS losing_trades
+            FROM trades
+            WHERE action = 'SELL' AND realized_pnl IS NOT NULL
+            """
+        ).fetchone()
+    return dict(row)
 
 
 init_db()
