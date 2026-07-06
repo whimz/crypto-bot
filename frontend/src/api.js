@@ -151,6 +151,10 @@ export function getPortfolioHistory(days = 7) {
   return request(`/portfolio/history?days=${days}`);
 }
 
+export function getPnlSummary() {
+  return request("/portfolio/pnl");
+}
+
 export async function exportTradesCsv(symbol, dateFrom, dateTo) {
   const params = new URLSearchParams();
   if (symbol) params.set("symbol", symbol);

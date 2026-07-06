@@ -646,6 +646,84 @@ tbody tr:hover {
   flex-shrink: 0;
 }
 
+/* Positions accordion */
+.accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.accordion-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  text-align: left;
+  color: var(--text);
+}
+
+.accordion-header:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--border) 40%, var(--bg));
+  opacity: 1;
+}
+
+.accordion-chevron {
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.accordion-chevron.open {
+  transform: rotate(90deg);
+}
+
+.accordion-title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.accordion-pnl {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.accordion-pnl.positive { color: var(--green); }
+.accordion-pnl.negative { color: var(--red); }
+
+.accordion-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+
+.accordion-body.open {
+  max-height: 400px;
+}
+
+.accordion-body-inner {
+  padding: 8px 12px 12px;
+}
+
+/* PnL Summary */
+.pnl-net-row {
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.pnl-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 12px 0 4px;
+}
+
 /* Settings */
 .settings-grid {
   display: grid;
