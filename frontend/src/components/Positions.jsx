@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatSymbol } from "../api.js";
 
 function formatUsdt(value) {
@@ -9,43 +10,68 @@ function formatPct(value) {
 }
 
 export default function Positions({ positions }) {
+  const [openSymbols, setOpenSymbols] = useState(new Set());
+
+  const toggle = (symbol) => {
+    setOpenSymbols((prev) => {
+      const next = new Set(prev);
+      if (next.has(symbol)) next.delete(symbol);
+      else next.add(symbol);
+      return next;
+    });
+  };
+
   return (
     <div className="card">
       <h2>Open Positions</h2>
       {positions.length === 0 ? (
         <div className="empty-state">No open positions</div>
       ) : (
-        <div className="position-grid">
+        <div className="accordion">
           {positions.map((position) => {
+            const isOpen = openSymbols.has(position.symbol);
             const pnlClass = position.pnl_usdt > 0 ? "positive" : position.pnl_usdt < 0 ? "negative" : "";
+            const pnlSign = position.pnl_usdt > 0 ? "+" : "";
+            const pnlDisplay =
+              position.pnl_usdt !== null && position.pnl_usdt !== undefined
+                ? `${pnlSign}$${Number(position.pnl_usdt).toFixed(2)}`
+                : "—";
             return (
-              <div className="position-card" key={position.symbol}>
-                <div className="symbol">{formatSymbol(position.symbol)}</div>
-                <div className="position-row">
-                  <span>Avg Price</span>
-                  <span>{formatUsdt(position.avg_price)}</span>
-                </div>
-                <div className="position-row">
-                  <span>Current Price</span>
-                  <span>{formatUsdt(position.current_price)}</span>
-                </div>
-                <div className="position-row">
-                  <span>Invested</span>
-                  <span>{formatUsdt(position.total_invested)}</span>
-                </div>
-                <div className="position-row">
-                  <span>PnL</span>
-                  <span className={pnlClass}>
-                    {formatUsdt(position.pnl_usdt)} ({formatPct(position.pnl_pct)})
-                  </span>
-                </div>
-                <div className="position-row">
-                  <span>DCA Count</span>
-                  <span>{position.dca_count}</span>
-                </div>
-                <div className="position-row">
-                  <span>Peak Price</span>
-                  <span>{formatUsdt(position.peak_price)}</span>
+              <div className="accordion-item" key={position.symbol}>
+                <button className="accordion-header" onClick={() => toggle(position.symbol)}>
+                  <span className={`accordion-chevron${isOpen ? " open" : ""}`}>▶</span>
+                  <span className="accordion-title">{formatSymbol(position.symbol)}</span>
+                  <span className={`accordion-pnl${pnlClass ? ` ${pnlClass}` : ""}`}>{pnlDisplay}</span>
+                </button>
+                <div className={`accordion-body${isOpen ? " open" : ""}`}>
+                  <div className="accordion-body-inner">
+                    <div className="position-row">
+                      <span>Avg Price</span>
+                      <span>{formatUsdt(position.avg_price)}</span>
+                    </div>
+                    <div className="position-row">
+                      <span>Current Price</span>
+                      <span>{formatUsdt(position.current_price)}</span>
+                    </div>
+                    <div className="position-row">
+                      <span>Invested</span>
+                      <span>{formatUsdt(position.total_invested)}</span>
+                    </div>
+                    <div className="position-row">
+                      <span>PnL</span>
+                      <span className={pnlClass}>
+                        {formatUsdt(position.pnl_usdt)} ({formatPct(position.pnl_pct)})
+                      </span>
+                    </div>
+                    <div className="position-row">
+                      <span>DCA Count</span>
+                      <span>{position.dca_count}</span>
+                    </div>
+                    <div className="position-row">
+                      <span>Peak Price</span>
+                      <span>{formatUsdt(position.peak_price)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
