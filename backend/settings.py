@@ -52,7 +52,7 @@ def _coerce(key: str, value) -> bool | int | float:
         return value if isinstance(value, bool) else str(value).strip().lower() in ("1", "true", "yes", "on")
     if key in _INT_FIELDS:
         return int(value)
-    return float(value)
+    return round(float(value), 4)
 
 
 def get_settings() -> Settings:
