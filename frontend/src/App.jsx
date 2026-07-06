@@ -6,6 +6,7 @@ import DepositChart from "./components/DepositChart.jsx";
 import FadeInSection from "./components/FadeInSection.jsx";
 import Header from "./components/Header.jsx";
 import Login from "./components/Login.jsx";
+import PnLSummary from "./components/PnLSummary.jsx";
 import Portfolio from "./components/Portfolio.jsx";
 import Positions from "./components/Positions.jsx";
 import SettingsDrawer from "./components/SettingsDrawer.jsx";
@@ -14,6 +15,7 @@ import Trades from "./components/Trades.jsx";
 import {
   getCurrentUser,
   getHealth,
+  getPnlSummary,
   getPortfolio,
   getToken,
   logout,
@@ -34,6 +36,7 @@ export default function App() {
   const [health, setHealth] = useState(null);
   const [portfolio, setPortfolio] = useState(null);
   const [positions, setPositions] = useState([]);
+  const [pnlData, setPnlData] = useState(null);
   const [busy, setBusy] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_STORAGE_KEY) || "light");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -95,6 +98,13 @@ export default function App() {
         requestId: err.requestId,
         retry: refresh,
       });
+    }
+    // pnl is supplementary — fetched independently so its failure doesn't affect main data
+    try {
+      const pnl = await getPnlSummary();
+      setPnlData(pnl);
+    } catch {
+      // silently ignore — PnL widget stays in loading state, no toast spam
     }
   }, []);
 
@@ -203,25 +213,26 @@ export default function App() {
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenBacktest={() => setBacktestOpen(true)}
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="flex flex-col gap-4">
         <FadeInSection>
           <Portfolio portfolio={portfolio} onDepositSaved={refresh} />
         </FadeInSection>
-        <FadeInSection>
-          <Positions positions={positions} />
-        </FadeInSection>
-        <FadeInSection>
-          <Chart />
-        </FadeInSection>
-        <FadeInSection>
-          <DepositChart />
-        </FadeInSection>
-        <FadeInSection>
-          <Trades />
-        </FadeInSection>
-        <FadeInSection>
-          <ActivityLog />
-        </FadeInSection>
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="w-full md:w-3/4">
+            <FadeInSection><Positions positions={positions} /></FadeInSection>
+          </div>
+          <div className="w-full md:w-1/4 order-first md:order-none">
+            <FadeInSection>
+              <PnLSummary data={pnlData} positions={positions} />
+            </FadeInSection>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FadeInSection><Chart /></FadeInSection>
+          <FadeInSection><DepositChart /></FadeInSection>
+          <FadeInSection><Trades /></FadeInSection>
+          <FadeInSection><ActivityLog /></FadeInSection>
+        </div>
       </div>
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {backtestOpen && <BacktestModal onClose={() => setBacktestOpen(false)} />}
